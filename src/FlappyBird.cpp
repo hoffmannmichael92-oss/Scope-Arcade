@@ -2,7 +2,7 @@
 #include "FlappyBird.h"
 #include "VectorFont.h"
 #include "Display.h"
-
+#include "ArcadeFont.h"
 // Wie beim Runner: Position, Hitbox, Animation und Punkte im Spieler-Struct.
 struct Vogel
 {
@@ -46,6 +46,25 @@ static const int rohrAbstand = 120;
 static const int rohrRandBreite = 4;
 static const int rohrRandHoehe = 8;
 
+// Steuerung
+static const float FLUEGELSCHLAG    = 4.5f;
+static const float SCHWERKRAFT      = 0.4f;
+static const float MAX_FALLTEMPO    = -6.0f;
+static const int   NACHSICHT        = 2;
+
+// Schwierigkeit: steigt mit jedem Punkt
+static const float START_TEMPO      = 2.0f;
+static const float TEMPO_PRO_PUNKT  = 0.05f;
+static const float MAX_TEMPO        = 3.5f;
+
+static const int   START_LUECKE     = 80;
+static const int   LUECKE_PRO_PUNKT = 1;
+static const int   MIN_LUECKE       = 48;
+
+static const int   START_VERSATZ     = 30;
+static const int   VERSATZ_PRO_PUNKT = 2;
+static const int   MAX_VERSATZ       = 90;
+
 // static verhindert Namenskonflikte mit den anderen Spielen.
 static bool flappyInitialisiert = false;
 static bool spielGestartet = false;
@@ -65,19 +84,65 @@ static void WolkeSpawnen(Wolke &wolke, float startX)
     wolke.y = random(minimaleY, maximaleY);
 }
 
+static float aktuellesTempo()
+{
+    float tempo = START_TEMPO + TEMPO_PRO_PUNKT * vogel.aktuellePunkteSpieler1;
+    if (tempo > MAX_TEMPO)
+    {
+        tempo = MAX_TEMPO;
+    }
+    return -tempo;  
+}
+
+static int aktuelleLuecke()
+{
+    int luecke = START_LUECKE - LUECKE_PRO_PUNKT * vogel.aktuellePunkteSpieler1;
+    if (luecke < MIN_LUECKE)
+    {
+        luecke = MIN_LUECKE;
+    }
+    return luecke;
+}
+
+static int aktuellerVersatz()
+{
+    int versatz = START_VERSATZ + VERSATZ_PRO_PUNKT * vogel.aktuellePunkteSpieler1;
+    if (versatz > MAX_VERSATZ)
+    {
+        versatz = MAX_VERSATZ;
+    }
+    return versatz;
+}
+
 // Hindernisse vorbereiten
-static void RohrSpawnen(Rohr &rohr, float startX)
+static void RohrSpawnen(Rohr &rohr, float startX, int vorherigeMitte)
 {
     rohr.x = startX;
     rohr.breite = 16;
     rohr.punktGezaehlt = false;
+    rohr.lueckeHoehe = aktuelleLuecke();
 
-    rohr.lueckeHoehe = random(57, 90);
+    // neue Mitte: höchstens "versatz" über oder unter der alten
+    int versatz = aktuellerVersatz();
+    int mitte = vorherigeMitte + random(-versatz, versatz + 1);
 
-    int maximaleUnterkante = 200 - rohr.lueckeHoehe;
-    rohr.lueckeY = random(30, maximaleUnterkante + 1);
-    Serial.print("RohrGeschwindigkeit: ");
-    Serial.println(rohr.geschwindigkeit);
+    // im erlaubten Bereich halten (Lücke zwischen 30 und 200)
+    int halbe = rohr.lueckeHoehe / 2;
+    if (mitte - halbe < 30)
+    {
+        mitte = 30 + halbe;
+    }
+    if (mitte + halbe > 200)
+    {
+        mitte = 200 - halbe;
+    }
+
+    rohr.lueckeY = mitte - halbe;
+}
+
+static int lueckeMitte(const Rohr &rohr)
+{
+    return rohr.lueckeY + rohr.lueckeHoehe / 2;
 }
 
 // Spiel zuruecksetzen
@@ -87,8 +152,8 @@ void ResetFlappy()
     verloren = false;
     vogel.aktuellePunkteSpieler1 = 0;
 
-    RohrSpawnen(rohr1, 160);
-    RohrSpawnen(rohr2, 290);
+    RohrSpawnen(rohr1, 160, 120);                  // 120 = Starthöhe des Vogels
+    RohrSpawnen(rohr2, 290, lueckeMitte(rohr1));
     WolkeSpawnen(wolke1, 200.0f);
     WolkeSpawnen(wolke2, 320.0f);
     WolkeSpawnen(wolke3, 440.0f);
@@ -153,11 +218,11 @@ static void FlappyZeichnen()
     );
 
     // Dieselbe Punkteanzeige wie beim Endless Runner (0 bis 99).
-    ZerlegeZiffer(128, 220, 24, vogel.aktuellePunkteSpieler1);
+    arcadeZahl(128, 220, vogel.aktuellePunkteSpieler1, 5);
 
     if (verloren)
     {
-        ZeichneGameOver(40, 100, 176, 50);
+        arcadeText(20, 100, "GAME OVER", 6);
     }
 
     
@@ -214,10 +279,10 @@ static bool VogelTrifftRechteck(
     float hoehe)
 {
     return
-        vogel.x < x + breite &&
-        vogel.x + vogel.breite > x &&
-        vogel.y < y + hoehe &&
-        vogel.y + vogel.hoehe > y;
+    vogel.x + NACHSICHT < x + breite &&
+    vogel.x + vogel.breite - NACHSICHT > x &&
+    vogel.y + NACHSICHT < y + hoehe &&
+    vogel.y + vogel.hoehe - NACHSICHT > y;
 }
 
 static bool VogelTrifftRohr(const Rohr &rohr)
@@ -323,7 +388,7 @@ static void BewegungAktualisieren(bool tasterKlick)
             vogel.letzteAnimation = letzteBewegung;
         }
 
-        vogel.geschwindigkeit = 4.0f;
+        vogel.geschwindigkeit = FLUEGELSCHLAG;      
     }
 
     if (!spielGestartet)
@@ -337,24 +402,12 @@ static void BewegungAktualisieren(bool tasterKlick)
     {
         return;
     }
-    if (jetzt - letzteErhoehung > 500)
-    {
-        rohr1.geschwindigkeit -= 0.04f;
-        rohr2.geschwindigkeit -= 0.04f;
-        wolke1.geschwindigkeit -= 0.04f;
-        wolke2.geschwindigkeit -= 0.04f;
-        wolke3.geschwindigkeit -= 0.04f;
-        letzteErhoehung = jetzt;
-    }
-    
-    if(rohr1.geschwindigkeit < -3.5f)
-    {
-        rohr1.geschwindigkeit = -3.5f;
-        rohr2.geschwindigkeit = -3.5f;
-        wolke1.geschwindigkeit = -3.5f;
-        wolke2.geschwindigkeit = -3.5f;
-        wolke3.geschwindigkeit = -3.5f;
-    }
+    float tempo = aktuellesTempo();
+    rohr1.geschwindigkeit = tempo;
+    rohr2.geschwindigkeit = tempo;
+    wolke1.geschwindigkeit = tempo - 0.5f;     
+    wolke2.geschwindigkeit = tempo - 0.5f;
+    wolke3.geschwindigkeit = tempo - 0.5f;
 
     letzteBewegung = jetzt;
 
@@ -366,12 +419,11 @@ static void BewegungAktualisieren(bool tasterKlick)
     // Verschwundenes Röhrenpaar hinter das andere setzen.
     if (rohr1.x + rohr1.breite + rohrRandBreite < 0)
     {
-        RohrSpawnen(rohr1, rohr2.x + rohrAbstand);
+        RohrSpawnen(rohr1, rohr2.x + rohrAbstand, lueckeMitte(rohr2));
     }
-
     if (rohr2.x + rohr2.breite + rohrRandBreite < 0)
     {
-        RohrSpawnen(rohr2, rohr1.x + rohrAbstand);
+        RohrSpawnen(rohr2, rohr1.x + rohrAbstand, lueckeMitte(rohr1));
     }
     if(wolke1.x + 40 < 0)
     {
@@ -385,9 +437,12 @@ static void BewegungAktualisieren(bool tasterKlick)
     {
         WolkeSpawnen(wolke3, wolke2.x + rohrAbstand);
     }
-    // Flugbewegung und Schwerkraft
     vogel.y += vogel.geschwindigkeit;
-    vogel.geschwindigkeit -= 0.3f;
+    vogel.geschwindigkeit -= SCHWERKRAFT;
+    if (vogel.geschwindigkeit < MAX_FALLTEMPO)
+    {
+        vogel.geschwindigkeit = MAX_FALLTEMPO;
+    }
 }
 
 // Hauptablauf wie loopEndlessRunner()
