@@ -1,6 +1,7 @@
 #include "EndlessRunner.h"
 #include "VectorFont.h"
 #include "Display.h"
+#include "ArcadeFont.h"
 
 struct Spieler
 {
@@ -27,7 +28,9 @@ struct Hindernis
     float geschwindigkeit;
     bool punktGezaehlt;
     bool istFledermaus;
+    bool istDoppelt;     
 };
+
 struct Grashalm
 {
     int x;
@@ -37,8 +40,16 @@ struct Grashalm
 };
 
 
+const float START_TEMPO   = -3.5f;
+const float TEMPO_PLUS    = -0.15f;
+const float MAX_TEMPO     = -8.0f;
+const float SPRUNGKRAFT   = 5.2f;
+const float SCHWERKRAFT   = 0.4f;
+const float SCHNELLFALLEN = 0.8f;
+const int   NACHSICHT     = 2;
+
 Grashalm grashalm1   = {0, 30, 255, 1.5};
-Hindernis hindernis = {200.0, 30, false, 16, 13, -2.0f, false, false};
+Hindernis hindernis = {255.0, 30, false, 21, 28, START_TEMPO, false, false, false};
 Spieler spieler1 = {40, 30, 25, 36, 0.0, false, 0, false, 0};
 bool laufBild = true; 
 bool SpielGestartet = false;
@@ -46,17 +57,21 @@ bool verloren = false;
 unsigned long letzteBewegung = 0;
 bool JoystickBereit = true; // Merker, ob der Joystick wieder in der Mitte war
 
+
+
 void HindernisSpanwnen()
 {
     hindernis.x = 255;
     hindernis.punktGezaehlt = false;
     hindernis.laufbild = false;
+    hindernis.istDoppelt = false;
 
-    hindernis.istFledermaus = (random(0,2) == 1);
+    // jedes dritte Hindernis ist eine Fledermaus
+    hindernis.istFledermaus = (random(0, 3) == 0);
 
-    if(hindernis.istFledermaus)
+    if (hindernis.istFledermaus)
     {
-        hindernis.y = 60;
+        hindernis.y = 50;
         hindernis.breite = 24;
         hindernis.hoehe = 14;
     }
@@ -65,12 +80,18 @@ void HindernisSpanwnen()
         hindernis.y = 30;
         hindernis.breite = 21;
         hindernis.hoehe = 28;
-    }
 
+        // ab Tempo 5: jeder dritte Kaktus ist doppelt so breit
+        if (hindernis.geschwindigkeit <= -5.0f && random(0, 3) == 0)
+        {
+            hindernis.istDoppelt = true;
+            hindernis.breite = 42;
+        }
+    }
 }
 void ResetEndlessRunner()
 {
-    hindernis.geschwindigkeit = -2.0f;
+    hindernis.geschwindigkeit = START_TEMPO;
     HindernisSpanwnen();
 
     spieler1.y = 30;
@@ -87,24 +108,11 @@ void ResetEndlessRunner()
 
 void RunnerZeichnen(int Pfeileingabe)
 {   
-    zeichneRechteck(
-    spieler1.x + 5,
-    spieler1.y + 2,
-    spieler1.breite - 5,
-    spieler1.hoehe - 2
-);
-
-zeichneRechteck(
-    hindernis.x,
-    hindernis.y,
-    hindernis.breite,
-    hindernis.hoehe
-);
     ZeichneGrashalme(grashalm1.x, grashalm1.y, grashalm1.breite);
     zeichneRechteck(0, 0, 255, 255);
     zeichneLinie(0, 30, 255, 30); 
     zeichneDino(spieler1.x, spieler1.y, spieler1.laufBild, spieler1.DinoGeduckt);
-    ZerlegeZiffer(115, 180, 26, spieler1.aktuellePunkteSpieler1);
+    arcadeZahl(115, 180, spieler1.aktuellePunkteSpieler1, 5);
     
     if (hindernis.istFledermaus)
     {
@@ -113,10 +121,14 @@ zeichneRechteck(
     else
     {
         zeichneKaktus(hindernis.x, hindernis.y);
+        if (hindernis.istDoppelt)
+        {
+            zeichneKaktus(hindernis.x + 21, hindernis.y);
+        }
     }
     if (verloren)
     {
-        ZeichneGameOver(40, 100, 175, 60);
+        arcadeText(20, 100, "GAME OVER", 6);
         SpielGestartet = false;
     }
 }
@@ -134,10 +146,12 @@ void AnimationenAktualisieren()
 }
 void KollisionPruefen()
 {
-   if ((spieler1.x + 5) < hindernis.x + hindernis.breite &&
-    spieler1.x + spieler1.breite > hindernis.x &&
-    (spieler1.y + 2) < hindernis.y + hindernis.hoehe &&
-    spieler1.y + spieler1.hoehe > hindernis.y)
+   const int nachsicht = NACHSICHT;
+
+if ((spieler1.x + 5 + nachsicht) < hindernis.x + hindernis.breite - nachsicht &&
+    spieler1.x + spieler1.breite - nachsicht > hindernis.x + nachsicht &&
+    (spieler1.y + 2 + nachsicht) < hindernis.y + hindernis.hoehe - nachsicht &&
+    spieler1.y + spieler1.hoehe - nachsicht > hindernis.y + nachsicht)
    {
         verloren = true;
         SpielGestartet = false; // Spiel sofort stoppen
@@ -170,13 +184,13 @@ void BewegungAktualisieren(int Pfeileingabe)
     {
         letzteBewegung = aktuelleMillisBewegung;
         hindernis.x += hindernis.geschwindigkeit;
-        if(hindernis.x < 0)
+        if (hindernis.x < 0)
         {
-            hindernis.geschwindigkeit = hindernis.geschwindigkeit - 0.15f;
-            if (hindernis.geschwindigkeit < -5.0)
-        {
-            hindernis.geschwindigkeit = -5.0f;
-        }
+            hindernis.geschwindigkeit += TEMPO_PLUS;
+            if (hindernis.geschwindigkeit < MAX_TEMPO)
+            {
+                hindernis.geschwindigkeit = MAX_TEMPO;
+            }
             HindernisSpanwnen();
         }
         
@@ -193,11 +207,17 @@ void BewegungAktualisieren(int Pfeileingabe)
         if (Pfeileingabe < -300 && JoystickBereit && spieler1.y == 30)
         {
             JoystickBereit = false;
-            spieler1.geschwindigkeit = 4.8f;
+            spieler1.geschwindigkeit = SPRUNGKRAFT;
         }
-    
+
+        
+        if (Pfeileingabe > 300 && spieler1.y > 30)
+        {
+            spieler1.geschwindigkeit -= SCHNELLFALLEN;
+        }
+
         spieler1.y += spieler1.geschwindigkeit;
-        spieler1.geschwindigkeit -= 0.3f;
+        spieler1.geschwindigkeit -= SCHWERKRAFT;
 
         if (spieler1.y <= 30)
         {

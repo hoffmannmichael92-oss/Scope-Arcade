@@ -4,7 +4,7 @@
 #include "Asteroids.h"
 #include <math.h>
 #include "Sound.h"
-
+#include "ArcadeFont.h"
 struct Raumschiff
 {
     float x;
@@ -45,15 +45,16 @@ unsigned long jetzt = 0;
 bool auswahlbereit = true;
 JoystickWerte Werte {0, 0};
 const int MAX_ASTEROIDEN = 20;
+const int MAX_SCHUESSE = 10;
 Asteroid Asteroid1[MAX_ASTEROIDEN] = {};
 Raumschiff Raumschiff1
 {
     128, 128,       // Mittelpunkt
-    30, 20,         // Höhe und Breite der Basis
+    15, 10,         // Höhe und Breite der Basis
     0.0f, 0.0f,     // Geschwindigkeit
     0.0f           // Winkel
 };
-Schuesse Schuss[10]{};
+Schuesse Schuss[MAX_SCHUESSE]{};
 void AsteroidsSpawnen(Asteroid &Asteroid1);
 void ResetAsteroids()
 {
@@ -237,6 +238,41 @@ void AntriebDrehen()
     );
 }
 
+void SchiffZeichnen()
+{
+    //Spitze      (0/12)
+    //Rechtsunten (8/-8)
+    //Kerberechts (3/-8)
+    //Kerbe links (-3/-8)
+    //Linksunten  (-8/-8)
+    //Kerbe       (0/-4)
+    float c = cos(Raumschiff1.Winkel);
+    float s = sin(Raumschiff1.Winkel);
+    float spitzeX = Raumschiff1.x + 0 * c - 12 * s;
+    float spitzeY = Raumschiff1.y + 0 * s + 12 * c;
+
+    float rechtsUntenX = Raumschiff1.x + 8 * c - (-8) * s;
+    float rechtsUntenY = Raumschiff1.y + 8 * s + (-8) * c;
+
+    float kerbeRechtsX = Raumschiff1.x + 3 * c - (-8) * s;
+    float kerbeRechtsY = Raumschiff1.y + 3 * s + (-8) * c;
+
+    float kerbeLinksX = Raumschiff1.x + (-3) * c - (-8) * s;
+    float kerbeLinksY = Raumschiff1.y + (-3) * s + (-8) * c;
+
+    float linksUntenX = Raumschiff1.x + (-8) * c - (-8) * s;
+    float linksUntenY = Raumschiff1.y + (-8) * s + (-8) * c;
+
+    float kerbeX = Raumschiff1.x + 0 * c - (-4) * s;
+    float kerbeY = Raumschiff1.y + 0 * s + (-4) * c;
+
+    zeichneLinie(spitzeX, spitzeY, rechtsUntenX, rechtsUntenY);
+    zeichneLinie(rechtsUntenX, rechtsUntenY, kerbeRechtsX, kerbeRechtsY);
+    zeichneLinie(kerbeRechtsX, kerbeRechtsY, kerbeX, kerbeY);
+    zeichneLinie(kerbeX, kerbeY, kerbeLinksX, kerbeLinksY);
+    zeichneLinie(kerbeLinksX, kerbeLinksY, linksUntenX, linksUntenY);
+    zeichneLinie(linksUntenX, linksUntenY, spitzeX, spitzeY);
+}
 
 void RaumschiffDrehen()
 {
@@ -248,26 +284,26 @@ void RaumschiffDrehen()
         Raumschiff1.Winkel =
             atan2f(richtungX, richtungY) + PI / 2.0f;
     }
-
-    BasisDrehen();
-    DachDrehen();
-    FluegelDrehen();
-    FensterDrehen();
-    AntriebDrehen();
+    SchiffZeichnen();
+    //BasisDrehen();
+    //DachDrehen();
+    //FluegelDrehen();
+    //FensterDrehen();
+    //AntriebDrehen();
 }
 void SchubDrehen()
 {
     // Unterkante deines Antriebs
-    float antriebUnten = -Raumschiff1.Hoehe / 2.0f - 6.0f;
+    float antriebUnten = -8;
 
     // Flamme relativ zur Schiffsmitte
-    float linksX = -5;
+    float linksX = -3;
     float linksY = antriebUnten;
 
     float spitzeX = 0;
     float spitzeY = antriebUnten - 16;
 
-    float rechtsX = 5;
+    float rechtsX = 3;
     float rechtsY = antriebUnten;
 
     float c = cos(Raumschiff1.Winkel);
@@ -286,57 +322,59 @@ void SchubDrehen()
 }
 void RaumschiffBewegen()
 {
-    bool schubWirdAngefordert = false;
-    unsigned long schubAngefordertSeit = 0;
-    int JoystickrichtungX = Werte.x - 1900;
-    int JoystickrichtungY = 1900 - Werte.y;
+    int JoystickrichtungX = Werte.x - 1850;
+    int JoystickrichtungY = 1850 - Werte.y;
     float richtungX = -sin(Raumschiff1.Winkel);
     float richtungY = cos(Raumschiff1.Winkel);
+    bool schub = (abs(JoystickrichtungX) > 1800 || abs(JoystickrichtungY) > 1800);
+    if(schub)
+    {
+        SchubDrehen();
+    }
     unsigned long jetzt = millis();
     static unsigned long letzteBewegung = 0;
-    if(jetzt - letzteBewegung >= 100)
+    if (jetzt - letzteBewegung >= 20)
     {
         letzteBewegung = jetzt;
-    if (abs(JoystickrichtungX) > 1850 || abs(JoystickrichtungY) > 1850)
-    {
+
+        if (schub)
+        {
+            Raumschiff1.GeschwindigkeitX += richtungX * 0.1f;
+            Raumschiff1.GeschwindigkeitY += richtungY * 0.1f;
+            float maxGeschwindigkeit = 3.0f;
+            float speed = sqrt(Raumschiff1.GeschwindigkeitX * Raumschiff1.GeschwindigkeitX +
+                               Raumschiff1.GeschwindigkeitY * Raumschiff1.GeschwindigkeitY);
+            if(speed > maxGeschwindigkeit)
+            {
+                Raumschiff1.GeschwindigkeitX = (Raumschiff1.GeschwindigkeitX / speed) * maxGeschwindigkeit;
+                Raumschiff1.GeschwindigkeitY = (Raumschiff1.GeschwindigkeitY / speed) * maxGeschwindigkeit;
+            }
+        } 
         
-        if(jetzt - schubAngefordertSeit >= 100)
+        else 
         {
-            schubAngefordertSeit = jetzt;
-            schubWirdAngefordert = true;
+            Raumschiff1.GeschwindigkeitX *= 0.993f;
+            Raumschiff1.GeschwindigkeitY *= 0.993f;
         }
-        if(schubWirdAngefordert)
+        Raumschiff1.x += Raumschiff1.GeschwindigkeitX;
+        Raumschiff1.y += Raumschiff1.GeschwindigkeitY;
+        if (Raumschiff1.x > 255)
         {
-            Raumschiff1.GeschwindigkeitX += richtungX * 0.01f;
-            Raumschiff1.GeschwindigkeitY += richtungY * 0.01f;
-            SchubDrehen();
+            Raumschiff1.x = 0;
+        }
+        if (Raumschiff1.x < 0)
+        {
+            Raumschiff1.x = 255;
+        }
+        if (Raumschiff1.y > 255)
+        {
+            Raumschiff1.y = 0;
+        }
+        if (Raumschiff1.y < 0)
+        {
+            Raumschiff1.y = 255;
         }
     }
-    else 
-    {
-        Raumschiff1.GeschwindigkeitX *= 0.99f;
-        Raumschiff1.GeschwindigkeitY *= 0.99f;
-        schubWirdAngefordert = false;
-    }
-    }
-    if (Raumschiff1.x > 255)
-    {
-        Raumschiff1.x = 0;
-    }
-    if (Raumschiff1.x < 0)
-    {
-        Raumschiff1.x = 255;
-    }
-    if (Raumschiff1.y > 255)
-    {
-        Raumschiff1.y = 0;
-    }
-    if (Raumschiff1.y < 0)
-    {
-        Raumschiff1.y = 255;
-    }
-    Raumschiff1.x += Raumschiff1.GeschwindigkeitX;
-    Raumschiff1.y += Raumschiff1.GeschwindigkeitY;
 }
 
 bool RaumschiffKollisionUeberpruefen(const Asteroid &Asteroid1,
@@ -345,7 +383,7 @@ bool RaumschiffKollisionUeberpruefen(const Asteroid &Asteroid1,
     float AbstandX = Raumschiff1.x - Asteroid1.x;
     float AbstandY = Raumschiff1.y - Asteroid1.y;
 
-    float radiusSchiff = 20.0f;
+    float radiusSchiff = 8.0f;
     float radiusAsteroid = Asteroid1.groesse;
 
 
@@ -449,19 +487,19 @@ void AsteroidsBewegen()
             
                 if (Asteroid1[i].x > 255)
                 {
-                    Asteroid1[i].AsteroidAktiv = false;
+                    Asteroid1[i].x = 0;
                 }
                 if (Asteroid1[i].x < 0)
                 {
-                    Asteroid1[i].AsteroidAktiv = false;
+                    Asteroid1[i].x = 255;
                 }
                 if (Asteroid1[i].y > 255)
                 {
-                    Asteroid1[i].AsteroidAktiv = false;
+                    Asteroid1[i].y = 0;
                 }
                 if (Asteroid1[i].y < 0)
                 {
-                    Asteroid1[i].AsteroidAktiv = false;
+                    Asteroid1[i].y = 255;
                 }
             }
         }
@@ -491,8 +529,8 @@ void SchussSpawnen()
 {
     float richtungX = -sin(Raumschiff1.Winkel);
     float richtungY = cos(Raumschiff1.Winkel);
-    float abstandSpitze = Raumschiff1.Hoehe / 2.0 + 15;
-    for(int i = 0; i < 10; i++)
+    float abstandSpitze = 12;
+    for(int i = 0; i < MAX_SCHUESSE; i++)
     {
         if(!Schuss[i].aktiv)
         {
@@ -515,7 +553,7 @@ void SchussBewegen()
     if(jetzt - letzteBewegung >= 20)
     {
         letzteBewegung = jetzt;
-        for(int i = 0; i < 10; i++)
+        for(int i = 0; i < MAX_SCHUESSE; i++)
         {
             if(Schuss[i].aktiv)
             {
@@ -543,7 +581,7 @@ void SchussBewegen()
 }
 void SchussZeichnen()
 {
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < MAX_SCHUESSE; i++)
     {
         if(Schuss[i].aktiv)
         {
@@ -609,7 +647,7 @@ void KleinereAsteroidenSpawnen(Asteroid &getroffener)
 
 void SchussKollisionErkannt()
 {
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < MAX_SCHUESSE; i++)
     {
         if(Schuss[i].aktiv)
         {
@@ -648,4 +686,7 @@ void loopAsteroids()
     SchussBewegen();
     SchussZeichnen();
     AsteroidsAktualisieren();
+    arcadeText(20, 150, "ABCDEFGHIJKLM", 3);
+    arcadeText(20, 120, "NOPQRSTUVWXYZ", 3);
+    arcadeText(20, 90, "0123456789", 3);
 } 

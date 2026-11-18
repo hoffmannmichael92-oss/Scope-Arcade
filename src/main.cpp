@@ -47,12 +47,12 @@ void setup()
 // -----------------------------------------------------------------------------
 void loop()
 {
+    strahlParken();
     SoundAktualisieren();
     // Hauptmenue
     if (spielZustand == 0)
     {
         loopMenu();
-        int potiWert = analogRead(potiPin);
     }
     // Pong-Moduswahl
     else if (spielZustand == 1)

@@ -1,36 +1,52 @@
 #include "Menu.h"
 #include "Display.h"
 #include "VectorFont.h"
+#include "ArcadeFont.h"
 #include "pong.h"
 #include "EndlessRunner.h"
 #include "Sound.h"
-extern int spielZustand; // wird in Main.cpp definiert
+extern int spielZustand; 
 bool auswahlBereit = true;
 
-// -----------------------------------------------------------------------------
-// Hauptmenue: Pong, Flappy Bird und Endless Runner
-// -----------------------------------------------------------------------------
+
+static void menuePunkt(int kastenY, const char* text)
+{
+    const int skala = 4;
+    const int kastenHoehe = 50;
+    const int textHoehe = 4 * skala;   // 5 Zeilen -> 4 Abstaende
+
+    zeichneRechteck(40, kastenY, 176, kastenHoehe);
+    arcadeTextMitte(kastenY + (kastenHoehe - textHoehe) / 2, text, skala);
+}
+
+static void menueKopf(int seite)
+{
+    zeichneRechteck(0, 0, 255, 255);
+
+    zeichneRechteck(59, 185, 138, 60);
+    arcadeTextMitte(201, "MENU", 7);
+
+    // Seitennummer im Kasten rechts oben
+    zeichneRechteck(210, 185, 35, 60);
+    arcadeZiffer(216, 199, seite, 8);
+
+    ZeichneVertikalerStrich(0, 180, 255);
+}
+
+
 void loopMenu()
 {
+    int Pfeileingabe = analogRead(36);
     if (digitalRead(5) == LOW)
     {
-        auswahlBereit = true; // Taster wurde losgelassen
+        auswahlBereit = true; 
     }
     static int pfeilY = 140;
-    menueZeichnen();
-    zeichneEins(215, 190, 50);
-    zeichneRechteck(210, 185, 35, 60);
-    ZeichnePingPong(125, 12, 40, 8);
-    ZeichneFlappy(67.5, 12, 40, 8);
-    ZeichneVertikalerStrich(0, 180, 255);
-    ZeichneRunner(10, 12, 40, 8);
-    int Pfeileingabe = analogRead(36);
 
     if (Pfeileingabe < 682)
     {
         pfeilY = 140;
     }
-
     else if (Pfeileingabe > 682 && Pfeileingabe < 1365)
     {
         pfeilY = 80;
@@ -40,17 +56,20 @@ void loopMenu()
         pfeilY = 25;
     }
 
+    menueKopf(1);
+    menuePunkt(120, "PING PONG");
+    menuePunkt(62, "FLAPPY");
+    menuePunkt(5, "RUNNER");
     zeichneAuswahlPfeil(20, pfeilY, 15);
+
     if (pfeilY == 140 && digitalRead(5) == HIGH && auswahlBereit)
     {
         auswahlBereit = false;
         MenueAuswahlTon();
         spielZustand = 1;
     }
-
     else if (pfeilY == 80 && digitalRead(5) == HIGH && auswahlBereit)
     {
-
         auswahlBereit = false;
         MenueAuswahlTon();
         spielZustand = 7;
@@ -63,26 +82,15 @@ void loopMenu()
     }
     else if (Pfeileingabe > 2047)
     {
-        spielZustand = 9; // Zweites Menü
+        spielZustand = 9; 
     }
-    delayMicroseconds(3);
 }
 
-// -----------------------------------------------------------------------------
-// Zweite Menue-Seite: Mario und Asteroids
-// -----------------------------------------------------------------------------
 void Menu2()
 {
     int Pfeileingabe = analogRead(36);
     static int pfeilY = 140;
-    menueZeichnen();
-    ZeichneVertikalerStrich(0, 180, 255);
-    zeichneZwei(215, 190, 50);
-    zeichneRechteck(210, 185, 35, 60);
-    ZeichneMario(125, 12, 40, 8);
-    ZeichneAsteroids(67.5, 12, 40, 8);
-    zeichneRechteck(0, 0, 255, 255);
-    zeichneAuswahlPfeil(20, pfeilY, 15);
+
     if (Pfeileingabe < 2047)
     {
         spielZustand = 0; // Zurück zum Hauptmenü
@@ -100,7 +108,10 @@ void Menu2()
         pfeilY = 20;
     }
 
-    delayMicroseconds(3);
+    menueKopf(2);
+    menuePunkt(120, "MARIO");
+    menuePunkt(62, "ASTEROIDS");
+    zeichneAuswahlPfeil(20, pfeilY, 15);
 
     if (pfeilY == 80 && digitalRead(5) == HIGH && auswahlBereit)
     {
@@ -110,20 +121,15 @@ void Menu2()
     }
 }
 
-// -----------------------------------------------------------------------------
-// Pong: Spieler gegen Spieler oder KI
-// -----------------------------------------------------------------------------
+
 void MenuPvPoderKI()
 {
+    int Pfeileingabe = analogRead(36);
     if (digitalRead(5) == LOW)
     {
         auswahlBereit = true;
     }
     static int pfeilY = 148;
-    zeichneRechteck(0, 0, 255, 255);
-    ZeichneModusPVP(40, 130, 176, 50);
-    ZeichneModusKI(40, 60, 176, 50);
-    int Pfeileingabe = analogRead(36);
 
     if (Pfeileingabe > 2200)
     {
@@ -133,6 +139,11 @@ void MenuPvPoderKI()
     {
         pfeilY = 148;
     }
+
+    zeichneRechteck(0, 0, 255, 255);
+    arcadeTextMitte(205, "PONG", 6);
+    menuePunkt(130, "PVP");
+    menuePunkt(60, "KI");
     zeichneAuswahlPfeil(20, pfeilY, 15);
 
     if (pfeilY == 148 && digitalRead(5) == HIGH && auswahlBereit)
@@ -150,9 +161,7 @@ void MenuPvPoderKI()
     }
 }
 
-// -----------------------------------------------------------------------------
-// Pong-KI: Schwierigkeitsgrad auswaehlen
-// -----------------------------------------------------------------------------
+
 void SchwierigkeitsgradAuswahl()
 {
     if (digitalRead(5) == LOW)
@@ -177,9 +186,9 @@ void SchwierigkeitsgradAuswahl()
     }
 
     zeichneRechteck(0, 0, 255, 255);
-    ZeichneModusLeicht(40, 170, 176, 50);
-    ZeichneModusMittel(40, 95, 176, 50);
-    ZeichneModusSchwer(40, 20, 176, 50);
+    menuePunkt(170, "LEICHT");
+    menuePunkt(95, "MITTEL");
+    menuePunkt(20, "SCHWER");
     zeichneAuswahlPfeil(20, pfeilY, 15);
 
     if (digitalRead(5) == HIGH && auswahlBereit)

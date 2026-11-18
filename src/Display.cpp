@@ -173,3 +173,9 @@ void positioniereStrahl(int x, int y)
 
     delayMicroseconds(15);
 }
+
+void strahlParken()
+{
+    zeigeKoordinate(pinsX, 0);
+    zeigeKoordinate(pinsY, 0);
+}

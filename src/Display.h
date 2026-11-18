@@ -20,3 +20,4 @@ void zeichneRechteck(int startX, int startY, int breite, int hoehe);
 void zeichneSchlaeger(Punkt ecke, int breite, int hoehe);
 void Joysticks();
 void positioniereStrahl(int x, int y);
+void strahlParken();
