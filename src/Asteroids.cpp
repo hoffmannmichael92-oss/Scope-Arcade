@@ -15,6 +15,7 @@ struct Raumschiff
     float GeschwindigkeitY;
     float Winkel;
     int leben;
+    int Punkte;
 };
 
 struct Asteroid
@@ -49,6 +50,13 @@ const int MAX_ASTEROIDEN = 20;
 const int MAX_SCHUESSE = 10;
 const int MAX_LEBEN = 3;
 const int FELD_OBEN = 230; 
+
+const int GROSS = 18;
+const int MITTEL = 12;
+const int KLEIN = 7;
+const int PunkteGROSS = 20;
+const int PunkteMITTEL = 50;
+const int PunkteKLEIN = 100;
 int Tasterpin = 2;
 static bool verloren = false; 
 Asteroid Asteroid1[MAX_ASTEROIDEN] = {};
@@ -58,7 +66,7 @@ Raumschiff Raumschiff1
     15, 10,         // Höhe und Breite der Basis
     0.0f, 0.0f,     // Geschwindigkeit
     0.0f ,           // Winkel
-    MAX_LEBEN       // Leben
+    MAX_LEBEN, 0       // Leben und Punkte
 };
 Schuesse Schuss[MAX_SCHUESSE]{};
 void AsteroidsSpawnen(Asteroid &Asteroid1);
@@ -71,6 +79,7 @@ void ResetAsteroids()
     Raumschiff1.GeschwindigkeitY = 0.0f;
     Raumschiff1.Winkel = 0;
     Raumschiff1.leben = MAX_LEBEN;
+    Raumschiff1.Punkte = 0;
     verloren = false;
     for (int i = 0; i < MAX_ASTEROIDEN; i++)
     {
@@ -336,6 +345,33 @@ void SchubDrehen()
         Raumschiff1.y + rechtsX * s + rechtsY * c
     );
 }
+uint8_t StellenZaehlen(int zahl)
+{
+    int anzahl = 0;
+    int rest = zahl;     
+    if(zahl == 0)    
+    {
+        anzahl = 1;
+    }
+    while (rest > 0)
+    {
+        rest = rest / 10;           
+        anzahl++;
+    }
+    return anzahl;
+}
+void Zahlenumrandung(int x, int y, int skala)
+{
+    int RandAbstand = skala;
+    int Abstand = StellenZaehlen(Raumschiff1.Punkte);
+    int StartX = x;
+    int StartY = y;
+    int breite = Abstand * 4 * skala - skala - 1;
+    int hoehe = 4 * skala;
+
+    zeichneRechteck(StartX - RandAbstand, StartY - RandAbstand, breite + RandAbstand * 2, hoehe + RandAbstand * 2);
+    //je nachdem wie viele stellen die Zahl hat, soll die Breite des Rechtecks größer werden. 
+}
 void GameOver()
 {
     Raumschiff1.x = 128;
@@ -353,11 +389,14 @@ void GameOver()
 
     zeichneRechteck(0, 0, 255, 255);
     arcadeTextMitte(150, "GAME OVER", 6);
+    arcadeText(40, 215, "SCORE", 4);
+    arcadeZahl(180, 215, Raumschiff1.Punkte, 4);
+    zeichneLinie(0, 195, 255, 195);
+    Zahlenumrandung(180, 215, 4);
     if (textSichtbar)
     {
         arcadeTextMitte(90, "SCHIESSEN ZUM NEUSTART", 2);
-    }
-    SchiffZeichnen();   
+    } 
 
     if (digitalRead(Tasterpin) == LOW)
     {
@@ -424,10 +463,6 @@ void RaumschiffBewegen()
             Raumschiff1.y = FELD_OBEN;
         }
     }
-    if(verloren)
-    {
-        GameOver();
-    }
 }
 
 bool RaumschiffKollisionUeberpruefen(const Asteroid &Asteroid1,
@@ -455,7 +490,7 @@ void AsteroidsSpawnen(Asteroid &Asteroid1)
     float startYRechts = random(0,FELD_OBEN + 1);
     float startXUnten = random(0,256);
     float startYUnten = 0;
-    Asteroid1.groesse = random (8,19);
+    Asteroid1.groesse = GROSS;  
     int seite = random(0,4);
     if(seite == 0)
     {
@@ -491,11 +526,7 @@ void AsteroidsSpawnen(Asteroid &Asteroid1)
  
 void AsteroidsAktualisieren()
 {
-    unsigned long jetzt = millis();
-    static unsigned long letzteBewegung = 0;
-    if(jetzt - letzteBewegung >= 20)
-    {
-        letzteBewegung = jetzt;
+
     for(int i = 0; i < 4; i++)
     {
         if(!Asteroid1[i].AsteroidAktiv)
@@ -503,7 +534,6 @@ void AsteroidsAktualisieren()
             AsteroidsSpawnen(Asteroid1[i]);
             break;
         }
-    }
     }
 }
 
@@ -581,6 +611,7 @@ void zeichneAsteroids()
     RaumschiffDrehen();
     zeichneLinie(0, FELD_OBEN, 255, FELD_OBEN);
     zeichneLeben(0.6, Raumschiff1.leben);
+    arcadeZahl(10, 235, Raumschiff1.Punkte, 3);
 }
 
 void SchussSpawnen()
@@ -660,7 +691,6 @@ void SchussAusloesen()
     }
 }
 
-// Prüft genau EINEN Schuss.
 bool SchussKollisionPruefen(const Asteroid &Asteroid1,
                            const Schuesse &schuss)
 {
@@ -677,16 +707,27 @@ bool SchussKollisionPruefen(const Asteroid &Asteroid1,
 
 void KleinereAsteroidenSpawnen(Asteroid &getroffener)
 {
-    if(getroffener.groesse <= 10)
-    {
-        return;
-    }
-    float startX = getroffener.x;
-    float startY = getroffener.y;
-    int kleinereGroesse = getroffener.groesse / 2;
-    getroffener.groesse = kleinereGroesse;
+    int kleinereGroesse = MITTEL;
     getroffener.geschwindigkeitX = random(-5,6) / 10.0;
     getroffener.geschwindigkeitY = random(-5,6) / 10.0;
+    if(getroffener.groesse == GROSS)
+    {
+        getroffener.groesse = MITTEL;
+        kleinereGroesse = MITTEL;
+    }
+    else if(getroffener.groesse == MITTEL)
+    {
+        getroffener.groesse = KLEIN;
+        kleinereGroesse = KLEIN;
+    }
+    else if(getroffener.groesse == KLEIN)
+    { 
+        return;
+    }
+    
+    float startX = getroffener.x;
+    float startY = getroffener.y;
+    
     for(int i = 0; i < MAX_ASTEROIDEN; i++)
     {
         if(!Asteroid1[i].AsteroidAktiv)
@@ -701,7 +742,21 @@ void KleinereAsteroidenSpawnen(Asteroid &getroffener)
         }
     }
 }
-
+void PunkteBerechnen(Asteroid &getroffener)
+{
+    if(getroffener.groesse == GROSS)
+    {
+        Raumschiff1.Punkte += PunkteGROSS;
+    }
+    else if(getroffener.groesse == MITTEL)
+    {
+        Raumschiff1.Punkte += PunkteMITTEL;
+    }
+    else if(getroffener.groesse == KLEIN)
+    {
+        Raumschiff1.Punkte += PunkteKLEIN;
+    }
+}
 void SchussKollisionErkannt()
 {
     for (int i = 0; i < MAX_SCHUESSE; i++)
@@ -715,8 +770,9 @@ void SchussKollisionErkannt()
                 {
                     if (SchussKollisionPruefen(Asteroid1[j], Schuss[i]))
                     {
+                        PunkteBerechnen(Asteroid1[j]);
                         Schuss[i].aktiv = false;
-                        if (Asteroid1[j].groesse > 10)
+                        if (Asteroid1[j].groesse != KLEIN)
                         {
                             KleinereAsteroidenSpawnen(Asteroid1[j]);
                         }

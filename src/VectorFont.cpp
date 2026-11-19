@@ -1101,15 +1101,3 @@ void zeichneLeben(float g, int leben)
         zeichneLinie(roundf(x + linksUntenX),  roundf(startY + linksUntenY),  roundf(x + spitzeX),      roundf(startY + spitzeY));
     }
 }
-
- 
-
-
-
-
-
-
-
-
-
-
