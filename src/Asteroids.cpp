@@ -14,6 +14,7 @@ struct Raumschiff
     float GeschwindigkeitX;
     float GeschwindigkeitY;
     float Winkel;
+    int leben;
 };
 
 struct Asteroid
@@ -46,13 +47,18 @@ bool auswahlbereit = true;
 JoystickWerte Werte {0, 0};
 const int MAX_ASTEROIDEN = 20;
 const int MAX_SCHUESSE = 10;
+const int MAX_LEBEN = 3;
+const int FELD_OBEN = 230; 
+int Tasterpin = 2;
+static bool verloren = false; 
 Asteroid Asteroid1[MAX_ASTEROIDEN] = {};
 Raumschiff Raumschiff1
 {
     128, 128,       // Mittelpunkt
     15, 10,         // Höhe und Breite der Basis
     0.0f, 0.0f,     // Geschwindigkeit
-    0.0f           // Winkel
+    0.0f ,           // Winkel
+    MAX_LEBEN       // Leben
 };
 Schuesse Schuss[MAX_SCHUESSE]{};
 void AsteroidsSpawnen(Asteroid &Asteroid1);
@@ -61,10 +67,20 @@ void ResetAsteroids()
     jetzt = millis();
     Raumschiff1.x = 128;
     Raumschiff1.y = 128;
-
     Raumschiff1.GeschwindigkeitX = 0.0f;
     Raumschiff1.GeschwindigkeitY = 0.0f;
     Raumschiff1.Winkel = 0;
+    Raumschiff1.leben = MAX_LEBEN;
+    verloren = false;
+    for (int i = 0; i < MAX_ASTEROIDEN; i++)
+    {
+        Asteroid1[i].AsteroidAktiv = false;
+    }
+    for (int i = 0; i < MAX_SCHUESSE; i++)
+    {
+        Schuss[i].aktiv = false;
+    }
+
 }
 
 
@@ -320,6 +336,39 @@ void SchubDrehen()
         Raumschiff1.y + rechtsX * s + rechtsY * c
     );
 }
+void GameOver()
+{
+    Raumschiff1.x = 128;
+    Raumschiff1.y = 128;
+    Raumschiff1.Winkel = 0;
+
+    unsigned long jetzt = millis();
+    static unsigned long letzteAnimation = 0;
+    static bool textSichtbar = false;
+    if (jetzt - letzteAnimation >= 500)
+    {
+        letzteAnimation = jetzt;
+        textSichtbar = !textSichtbar;
+    }
+
+    zeichneRechteck(0, 0, 255, 255);
+    arcadeTextMitte(150, "GAME OVER", 6);
+    if (textSichtbar)
+    {
+        arcadeTextMitte(90, "SCHIESSEN ZUM NEUSTART", 2);
+    }
+    SchiffZeichnen();   
+
+    if (digitalRead(Tasterpin) == LOW)
+    {
+        auswahlbereit = true;
+    }
+    if (digitalRead(Tasterpin) == HIGH && auswahlbereit)
+    {
+        auswahlbereit = false;
+        ResetAsteroids();
+    }
+}
 void RaumschiffBewegen()
 {
     int JoystickrichtungX = Werte.x - 1850;
@@ -366,14 +415,18 @@ void RaumschiffBewegen()
         {
             Raumschiff1.x = 255;
         }
-        if (Raumschiff1.y > 255)
+        if (Raumschiff1.y > FELD_OBEN)
         {
             Raumschiff1.y = 0;
         }
         if (Raumschiff1.y < 0)
         {
-            Raumschiff1.y = 255;
+            Raumschiff1.y = FELD_OBEN;
         }
+    }
+    if(verloren)
+    {
+        GameOver();
     }
 }
 
@@ -395,11 +448,11 @@ bool RaumschiffKollisionUeberpruefen(const Asteroid &Asteroid1,
 void AsteroidsSpawnen(Asteroid &Asteroid1)
 {
     float startXLinks = 0;
-    float startYLinks = random(0,256);
+    float startYLinks = random(0,FELD_OBEN + 1);
     float startXOben = random(0,256);
-    float startYOben = 255;
+    float startYOben = FELD_OBEN;
     float startXRechts = 255;
-    float startYRechts = random(0,256);
+    float startYRechts = random(0,FELD_OBEN + 1);
     float startXUnten = random(0,256);
     float startYUnten = 0;
     Asteroid1.groesse = random (8,19);
@@ -462,7 +515,12 @@ void RaumschiffKollisionErkannt()
         {
             if(RaumschiffKollisionUeberpruefen(Asteroid1[i], Raumschiff1))
             {
-                ResetAsteroids();
+                Raumschiff1.leben--;
+                Asteroid1[i].AsteroidAktiv = false;
+                if(Raumschiff1.leben <= 0)
+                {
+                    verloren = true;
+                }
                 break;
             }
         }
@@ -493,13 +551,13 @@ void AsteroidsBewegen()
                 {
                     Asteroid1[i].x = 255;
                 }
-                if (Asteroid1[i].y > 255)
+                if (Asteroid1[i].y > FELD_OBEN)
                 {
                     Asteroid1[i].y = 0;
                 }
                 if (Asteroid1[i].y < 0)
                 {
-                    Asteroid1[i].y = 255;
+                    Asteroid1[i].y = FELD_OBEN;
                 }
             }
         }
@@ -517,12 +575,12 @@ void zeichneAsteroid()
 }
 
 void zeichneAsteroids()
-{   
+{
     zeichneRechteck(0, 0, 255, 255);
-    RaumschiffDrehen();
     zeichneAsteroid();
-    
-    
+    RaumschiffDrehen();
+    zeichneLinie(0, FELD_OBEN, 255, FELD_OBEN);
+    zeichneLeben(0.6, Raumschiff1.leben);
 }
 
 void SchussSpawnen()
@@ -567,7 +625,7 @@ void SchussBewegen()
                 {
                     Schuss[i].aktiv = false;
                 }
-                if(Schuss[i].y > 255)
+                if(Schuss[i].y > FELD_OBEN)
                 {
                     Schuss[i].aktiv = false;
                 }
@@ -591,7 +649,6 @@ void SchussZeichnen()
 }
 void SchussAusloesen()
 {
-    int Tasterpin = 2;
     if(digitalRead(Tasterpin) == HIGH && auswahlbereit)
     {
         SchussSpawnen();
@@ -676,9 +733,15 @@ void SchussKollisionErkannt()
 }
 void loopAsteroids()
 {
+    if (verloren)
+    {
+        GameOver();
+        return;
+    }
+
     Werte = JoysticksEinlesen();
     RaumschiffBewegen();
-    AsteroidsBewegen(); 
+    AsteroidsBewegen();
     RaumschiffKollisionErkannt();
     SchussKollisionErkannt();
     zeichneAsteroids();
@@ -686,7 +749,4 @@ void loopAsteroids()
     SchussBewegen();
     SchussZeichnen();
     AsteroidsAktualisieren();
-    arcadeText(20, 150, "ABCDEFGHIJKLM", 3);
-    arcadeText(20, 120, "NOPQRSTUVWXYZ", 3);
-    arcadeText(20, 90, "0123456789", 3);
-} 
+}

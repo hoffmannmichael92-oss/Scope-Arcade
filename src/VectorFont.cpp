@@ -1063,6 +1063,45 @@ void zeichneSchub(
 }
 
 
+void zeichneLeben(float g, int leben)
+{
+    //Spitze      (0/12)
+    //Rechtsunten (8/-8)
+    //Kerberechts (3/-8)
+    //Kerbe links (-3/-8)
+    //Linksunten  (-8/-8)
+    //Kerbe       (0/-4)     
+    int startX = 215;
+    int startY = 240;
+    int abstand = 14;  
+
+    float spitzeX      =  0 * g;
+    float spitzeY      = 12 * g;
+    float rechtsUntenX =  8 * g;
+    float rechtsUntenY = -8 * g;
+    float kerbeRechtsX =  3 * g;
+    float kerbeRechtsY = -8 * g;
+    float kerbeX       =  0 * g;
+    float kerbeY       = -4 * g;
+    float kerbeLinksX  = -3 * g;
+    float kerbeLinksY  = -8 * g;
+    float linksUntenX  = -8 * g;
+    float linksUntenY  = -8 * g;
+
+
+    for (int i = 0; i < leben; i++)
+    {
+        int x = startX + i * abstand;
+
+        zeichneLinie(roundf(x + spitzeX),      roundf(startY + spitzeY),      roundf(x + rechtsUntenX), roundf(startY + rechtsUntenY));
+        zeichneLinie(roundf(x + rechtsUntenX), roundf(startY + rechtsUntenY), roundf(x + kerbeRechtsX), roundf(startY + kerbeRechtsY));
+        zeichneLinie(roundf(x + kerbeRechtsX), roundf(startY + kerbeRechtsY), roundf(x + kerbeX),       roundf(startY + kerbeY));
+        zeichneLinie(roundf(x + kerbeX),       roundf(startY + kerbeY),       roundf(x + kerbeLinksX),  roundf(startY + kerbeLinksY));
+        zeichneLinie(roundf(x + kerbeLinksX),  roundf(startY + kerbeLinksY),  roundf(x + linksUntenX),  roundf(startY + linksUntenY));
+        zeichneLinie(roundf(x + linksUntenX),  roundf(startY + linksUntenY),  roundf(x + spitzeX),      roundf(startY + spitzeY));
+    }
+}
+
  
 
 

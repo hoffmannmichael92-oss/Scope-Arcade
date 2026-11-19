@@ -101,3 +101,5 @@ void zeichneSchub(
     float linksX, float linksY,
     float spitzeX, float spitzeY,
     float rechtsX, float rechtsY);
+
+void zeichneLeben(float g, int leben);
