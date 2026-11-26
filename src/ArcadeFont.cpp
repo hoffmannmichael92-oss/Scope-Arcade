@@ -82,6 +82,7 @@ void zeichenZeichnenVerbunden(int x, int y, const uint8_t muster[5], int skala)
 
 void zeichenZeichnen(int x, int y, const uint8_t muster[5], int skala)
 {
+    positioniereStrahl(x, y + 4 * skala);
     for (int zeile = 0; zeile < 5; zeile++)
     {
         for (int spalte = 0; spalte < 3; spalte++)
@@ -93,7 +94,8 @@ void zeichenZeichnen(int x, int y, const uint8_t muster[5], int skala)
                 int pixelX = x + spalte * skala;
                 int pixelY = y + (4 - zeile) * skala;
 
-                // Kurzen Strich zeichnen, so breit wie ein Pixel
+                strahlSpringen(pixelX, pixelY);
+                zeichneLinie(pixelX, pixelY, pixelX + skala - 1, pixelY);
                 zeichneLinie(pixelX, pixelY, pixelX + skala - 1, pixelY);
             }
         }
@@ -185,4 +187,33 @@ void arcadeTextMitte(int y, const char* text, int skala)
 {
     int x = (256 - arcadeTextBreite(text, skala)) / 2;
     arcadeText(x, y, text, skala);
+}
+
+void Zahlenumrandung(int x, int y, int skala, int Punkte)
+{
+    int RandAbstand = skala;
+    int Abstand = StellenZaehlen(Punkte);
+    int StartX = x;
+    int StartY = y;
+    int breite = Abstand * 4 * skala - skala - 1;
+    int hoehe = 4 * skala;
+
+    zeichneRechteck(StartX - RandAbstand, StartY - RandAbstand, breite + RandAbstand * 2, hoehe + RandAbstand * 2);
+    //je nachdem wie viele stellen die Zahl hat, soll die Breite des Rechtecks größer werden. 
+}
+
+uint8_t StellenZaehlen(int zahl)
+{
+    int anzahl = 0;
+    int rest = zahl;     
+    if(zahl == 0)    
+    {
+        anzahl = 1;
+    }
+    while (rest > 0)
+    {
+        rest = rest / 10;           
+        anzahl++;
+    }
+    return anzahl;
 }

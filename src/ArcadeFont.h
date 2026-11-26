@@ -8,3 +8,5 @@ void arcadeText(int x, int y, const char* text, int skala);
 void arcadeZahl(int x, int y, int zahl, int skala);
 int arcadeTextBreite(const char* text, int skala);
 void arcadeTextMitte(int y, const char* text, int skala);
+void Zahlenumrandung(int x, int y, int skala, int Punkte);
+uint8_t StellenZaehlen(int zahl);

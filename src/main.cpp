@@ -47,7 +47,7 @@ void setup()
 // -----------------------------------------------------------------------------
 void loop()
 {
-    strahlParken();
+    positioniereStrahl(0, 0);
     SoundAktualisieren();
     // Hauptmenue
     if (spielZustand == 0)

@@ -166,6 +166,11 @@ void zeichneSchlaeger(Punkt ecke, int breite, int hoehe)
     zeichneRechteck(ecke.x, ecke.y, breite, hoehe);
 }
 
+void strahlParken()
+{
+    zeigeKoordinate(pinsX, 0);
+    zeigeKoordinate(pinsY, 0);
+}
 void positioniereStrahl(int x, int y)
 {
     zeigeKoordinate(pinsX, x);
@@ -173,9 +178,11 @@ void positioniereStrahl(int x, int y)
 
     delayMicroseconds(15);
 }
-
-void strahlParken()
+// Strahl springen lassen und kurz warten, bis er angekommen ist.
+// Verhindert sichtbare Verbindungslinien bei Sprüngen.
+void strahlSpringen(int x, int y)
 {
-    zeigeKoordinate(pinsX, 0);
-    zeigeKoordinate(pinsY, 0);
+    zeigeKoordinate(pinsX, x);
+    zeigeKoordinate(pinsY, y);
+    delayMicroseconds(10);
 }

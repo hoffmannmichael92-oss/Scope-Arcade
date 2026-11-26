@@ -375,33 +375,8 @@ void SchubDrehen()
         Raumschiff1.y + rechtsX * s + rechtsY * c
     );
 }
-uint8_t StellenZaehlen(int zahl)
-{
-    int anzahl = 0;
-    int rest = zahl;     
-    if(zahl == 0)    
-    {
-        anzahl = 1;
-    }
-    while (rest > 0)
-    {
-        rest = rest / 10;           
-        anzahl++;
-    }
-    return anzahl;
-}
-void Zahlenumrandung(int x, int y, int skala)
-{
-    int RandAbstand = skala;
-    int Abstand = StellenZaehlen(Raumschiff1.Punkte);
-    int StartX = x;
-    int StartY = y;
-    int breite = Abstand * 4 * skala - skala - 1;
-    int hoehe = 4 * skala;
 
-    zeichneRechteck(StartX - RandAbstand, StartY - RandAbstand, breite + RandAbstand * 2, hoehe + RandAbstand * 2);
-    //je nachdem wie viele stellen die Zahl hat, soll die Breite des Rechtecks größer werden. 
-}
+
 void GameOver()
 {
     Raumschiff1.x = 128;
@@ -422,7 +397,7 @@ void GameOver()
     arcadeText(40, 215, "SCORE", 4);
     arcadeZahl(160, 215, Raumschiff1.Punkte, 4);
     zeichneLinie(0, 195, 255, 195);
-    Zahlenumrandung(160, 215, 4);
+    Zahlenumrandung(160, 215, 4, Raumschiff1.Punkte);
     if (textSichtbar)
     {
         arcadeTextMitte(90, "SCHIESSEN ZUM NEUSTART", 2);

@@ -2,6 +2,7 @@
 #include "Display.h"
 #include "VectorFont.h"
 #include "Sound.h"
+#include "ArcadeFont.h"
 #include <math.h>
 
 const int FELD_GROESSE = 255;
@@ -277,15 +278,18 @@ void gewinnerAnzeigen()
         letztesWiederhohlen = jetzt;
         gewinnerTextSichtbar = !gewinnerTextSichtbar;
     }
-    ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
-    ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
+    arcadeZahl(20, 230, aktuellePunkteSpieler1, 5);
+    arcadeZahl(230, 230, aktuellePunkteSpieler2, 5);
     zeichneRechteck(0, 0, FELD_GROESSE, FELD_GROESSE);
     zeichneSchlaeger(schlaegerLinks, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
     zeichneSchlaeger(schlaegerRechts, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
 
     if (gewinnerTextSichtbar)
     {
-        ZeichneGewinner(40, 100, 175, 60, gewinner);
+        arcadeText(40, 160, "SPIELER", 5);
+        arcadeZahl(190, 160, gewinner, 5);
+        Zahlenumrandung(190, 160, 5, gewinner);
+        arcadeText(50, 130, "GEWONNEN", 5);
     }
 }
 
@@ -316,6 +320,7 @@ void ballBewegen()
         if (bewegungX < 0 &&
             ballBeruehrtSchlaeger(schlaegerLinks))
         {
+            PongSound();
             float treffer = ballY - (schlaegerLinks.y + SCHLAEGER_HALB);
 
             if (treffer > SCHLAEGER_HALB) treffer = SCHLAEGER_HALB;
@@ -330,6 +335,7 @@ void ballBewegen()
         else if (bewegungX > 0 &&
                  ballBeruehrtSchlaeger(schlaegerRechts))
         {
+            PongSound();
             float treffer = ballY - (schlaegerRechts.y + SCHLAEGER_HALB);
 
             if (treffer > SCHLAEGER_HALB) treffer = SCHLAEGER_HALB;
@@ -369,6 +375,7 @@ void ballBewegen()
 
             if (ballY + BALL_RADIUS >= FELD_GROESSE)
             {
+                PongSound();
                 ballY = FELD_GROESSE - BALL_RADIUS;
 
                 if (richtungY > 0)
@@ -378,6 +385,7 @@ void ballBewegen()
             }
             else if (ballY - BALL_RADIUS <= 0)
             {
+                PongSound();
                 ballY = BALL_RADIUS;
 
                 if (richtungY < 0)
@@ -403,8 +411,8 @@ void gewinnerPruefen()
 
 void pongZeichnen()
 {
-    ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
-    ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
+    arcadeZahl(20, 230, aktuellePunkteSpieler1, 3);
+    arcadeZahl(230, 230, aktuellePunkteSpieler2, 3);
 
     zeichneRechteck(0, 0, FELD_GROESSE, FELD_GROESSE);
     zeichneSchlaeger(schlaegerLinks, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
@@ -412,15 +420,7 @@ void pongZeichnen()
 
     if (countdownAktiv)
     {
-        if (countdownZahl == 1)
-        {
-            positioniereStrahl(138, 158);
-        }
-        else
-        {
-            positioniereStrahl(118, 198);
-        }
-        zeichneZiffer(118, 158, 40, countdownZahl);
+        arcadeZahl(118, 158, countdownZahl, 8);
     }
     else
     {
@@ -433,10 +433,6 @@ void pongZeichnen()
 // Ein Durchlauf von Pong, für beide Modi
 void pongSpielen(bool gegenKI, int schwierigkeit)
 {
-    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
-    {
-        PongSound();
-    }
     if (Gewonnen)
     {
         gewinnerAnzeigen();
