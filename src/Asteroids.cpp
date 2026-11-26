@@ -390,9 +390,9 @@ void GameOver()
     zeichneRechteck(0, 0, 255, 255);
     arcadeTextMitte(150, "GAME OVER", 6);
     arcadeText(40, 215, "SCORE", 4);
-    arcadeZahl(180, 215, Raumschiff1.Punkte, 4);
+    arcadeZahl(160, 215, Raumschiff1.Punkte, 4);
     zeichneLinie(0, 195, 255, 195);
-    Zahlenumrandung(180, 215, 4);
+    Zahlenumrandung(160, 215, 4);
     if (textSichtbar)
     {
         arcadeTextMitte(90, "SCHIESSEN ZUM NEUSTART", 2);
@@ -550,6 +550,7 @@ void RaumschiffKollisionErkannt()
                 if(Raumschiff1.leben <= 0)
                 {
                     verloren = true;
+                    GameOverSound();
                 }
                 break;
             }
