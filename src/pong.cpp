@@ -278,8 +278,8 @@ void gewinnerAnzeigen()
         letztesWiederhohlen = jetzt;
         gewinnerTextSichtbar = !gewinnerTextSichtbar;
     }
-    arcadeZahl(20, 230, aktuellePunkteSpieler1, 5);
-    arcadeZahl(230, 230, aktuellePunkteSpieler2, 5);
+    arcadeZahl(40, 220, aktuellePunkteSpieler1, 3);
+    arcadeZahl(210, 220, aktuellePunkteSpieler2, 3);
     zeichneRechteck(0, 0, FELD_GROESSE, FELD_GROESSE);
     zeichneSchlaeger(schlaegerLinks, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
     zeichneSchlaeger(schlaegerRechts, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
@@ -288,8 +288,7 @@ void gewinnerAnzeigen()
     {
         arcadeText(40, 160, "SPIELER", 5);
         arcadeZahl(190, 160, gewinner, 5);
-        Zahlenumrandung(190, 160, 5, gewinner);
-        arcadeText(50, 130, "GEWONNEN", 5);
+        arcadeText(61, 120, "GEWINNT", 5);
     }
 }
 
@@ -411,8 +410,8 @@ void gewinnerPruefen()
 
 void pongZeichnen()
 {
-    arcadeZahl(20, 230, aktuellePunkteSpieler1, 3);
-    arcadeZahl(230, 230, aktuellePunkteSpieler2, 3);
+    arcadeZahl(40, 220, aktuellePunkteSpieler1, 3);
+    arcadeZahl(210, 220, aktuellePunkteSpieler2, 3);
 
     zeichneRechteck(0, 0, FELD_GROESSE, FELD_GROESSE);
     zeichneSchlaeger(schlaegerLinks, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
