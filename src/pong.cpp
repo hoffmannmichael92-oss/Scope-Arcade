@@ -4,12 +4,26 @@
 #include "Sound.h"
 #include <math.h>
 
-// 1:1 deine Variablen
-float ballX = 128;
-float ballY = 128;
-float ballWinkel = 0.0; // In Grad (0° = nach rechts)
-float ballSpeed = 1.0;  // Feste Ball-Geschwindigkeit
-int meinRadius = 15;
+const int FELD_GROESSE = 255;
+const int FELD_MITTE = 128;
+
+const int SCHLAEGER_BREITE = 15;
+const int SCHLAEGER_HOEHE = 60;
+const int SCHLAEGER_HALB = SCHLAEGER_HOEHE / 2;
+
+const int BALL_RADIUS = 15;
+const float BALL_START = 1.0f;
+const float BALL_PLUS = 0.2f;
+const float BALL_MAX = 3.0f;
+const float MAX_WINKEL = 45.0f;
+
+const int SIEG_PUNKTE = 10;
+
+
+float ballX = FELD_MITTE;
+float ballY = FELD_MITTE;
+float ballWinkel = 0.0; 
+float ballSpeed = BALL_START;  
 
 Punkt schlaegerLinks = {0, 50};
 Punkt schlaegerRechts = {240, 50};
@@ -18,7 +32,7 @@ int aktuellePunkteSpieler2 = 0;
 bool Gewonnen = false;
 int PotiLinks = 0;
 int PotiRechts = 0;
-int KISchwierigkeit = 1; // 1 = leicht, 2 = mittel, 3 = schwer
+int KISchwierigkeit = 1; 
 bool spielGestartet = false;
 bool gewinnerTextSichtbar = true;
 bool countdownAktiv = false;
@@ -62,32 +76,30 @@ void lesePoti() {
 
     PotiRechts = analogRead(39); 
 
-    schlaegerLinks.y = map(PotiLinks, 0, 4095, 0, 255 - 60);
-    schlaegerRechts.y = map(PotiRechts, 0, 4095, 0, 255 - 60);
+    schlaegerLinks.y = map(PotiLinks, 0, 4095, 0, FELD_GROESSE - SCHLAEGER_HOEHE);
+    schlaegerRechts.y = map(PotiRechts, 0, 4095, 0, FELD_GROESSE - SCHLAEGER_HOEHE);
 }
 void lesePotiKI() {
     // 1. Analogwerte einlesen
     PotiLinks = analogRead(36); 
  
-    schlaegerLinks.y = map(PotiLinks, 0, 4095, 0, 255 - 60);
+    schlaegerLinks.y = map(PotiLinks, 0, 4095, 0, FELD_GROESSE - SCHLAEGER_HOEHE);
 }
 
 
 
 bool ballBeruehrtSchlaeger(Punkt schlaeger)
 {
-    // Zunächst den Ballmittelpunkt übernehmen
     float naechsterX = ballX;
     float naechsterY = ballY;
 
-    // X auf den Bereich des Schlägers begrenzen
     if (naechsterX < schlaeger.x)
     {
         naechsterX = schlaeger.x;
     }
-    else if (naechsterX > schlaeger.x + 15)
+    else if (naechsterX > schlaeger.x + SCHLAEGER_BREITE)
     {
-        naechsterX = schlaeger.x + 15;
+        naechsterX = schlaeger.x + SCHLAEGER_BREITE;
     }
 
     // Y auf den Bereich des Schlägers begrenzen
@@ -95,25 +107,24 @@ bool ballBeruehrtSchlaeger(Punkt schlaeger)
     {
         naechsterY = schlaeger.y;
     }
-    else if (naechsterY > schlaeger.y + 60)
+    else if (naechsterY > schlaeger.y + SCHLAEGER_HOEHE)
     {
-        naechsterY = schlaeger.y + 60;
+        naechsterY = schlaeger.y + SCHLAEGER_HOEHE;
     }
 
-    // Abstand vom Ballmittelpunkt zum nächsten Schlägerpunkt
+
     float abstandX = ballX - naechsterX;
     float abstandY = ballY - naechsterY;
 
     return abstandX * abstandX + abstandY * abstandY
-           <= meinRadius * meinRadius;
+           <= BALL_RADIUS * BALL_RADIUS;
 }
 
-// Wird beim Wechsel ins Menü / Neustart aufgerufen
 void resetPong() {
-    ballX = 128;
-    ballY = 128;
+    ballX = FELD_MITTE;
+    ballY = FELD_MITTE;
     ballWinkel = 0.0;
-    ballSpeed = 1.0;
+    ballSpeed = BALL_START;
     aktuellePunkteSpieler1 = 0;
     aktuellePunkteSpieler2 = 0;
     schlaegerLinks.y = 50;
@@ -126,195 +137,7 @@ void resetPong() {
 
 }
 
-void loopPong()
-{
-    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
-    {
-        PongSound();
-    }
-    
-    // 1. Gewinneranzeige
-    if (Gewonnen)
-    {
-        unsigned long jetzt = millis();
-        int gewinner = (aktuellePunkteSpieler1 >= 10) ? 1 : 2;
 
-        if (jetzt - letztesWiederhohlen >= 500)
-        {
-            letztesWiederhohlen = jetzt;
-            gewinnerTextSichtbar = !gewinnerTextSichtbar;
-        }
-
-        ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
-        ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
-        zeichneRechteck(0, 0, 255, 255);
-        zeichneSchlaeger(schlaegerLinks, 15, 60);
-        zeichneSchlaeger(schlaegerRechts, 15, 60);
-
-        if (gewinnerTextSichtbar)
-        {
-            ZeichneGewinner(40, 100, 175, 60, gewinner);
-        }
-
-        return;
-    }
-
-    // 2. Eingaben und Countdown aktualisieren
-    lesePoti();
-    countdownAktualisieren();
-
-    // 3. Schläger auf das Spielfeld begrenzen
-    if (schlaegerLinks.y < 0)
-        schlaegerLinks.y = 0;
-
-    if (schlaegerLinks.y + 60 > 255)
-        schlaegerLinks.y = 255 - 60;
-
-    if (schlaegerRechts.y < 0)
-        schlaegerRechts.y = 0;
-
-    if (schlaegerRechts.y + 60 > 255)
-        schlaegerRechts.y = 255 - 60;
-
-    // Bewegung und Kollisionen nur im laufenden Spiel
-    if (spielGestartet)
-    {
-        // 4. Ball bewegen
-        float rad = ballWinkel * (PI / 180.0);
-        float bewegungX = ballSpeed * cos(rad);
-        float bewegungY = ballSpeed * sin(rad);
-
-        ballX += bewegungX;
-        ballY += bewegungY;
-
-        // 5. Linker Schläger
-        if (bewegungX < 0 &&
-            ballBeruehrtSchlaeger(schlaegerLinks))
-        {
-            float treffer = ballY - (schlaegerLinks.y + 30);
-
-            if (treffer > 30) treffer = 30;
-            if (treffer < -30) treffer = -30;
-
-            ballWinkel = (treffer / 30.0) * 45.0;
-            ballX = schlaegerLinks.x + 15 + meinRadius;
-
-            ballSpeed += 0.2;
-            if (ballSpeed > 3.0) ballSpeed = 3.0;
-        }
-        // Rechter Schläger
-        else if (bewegungX > 0 &&
-                 ballBeruehrtSchlaeger(schlaegerRechts))
-        {
-            float treffer = ballY - (schlaegerRechts.y + 30);
-
-            if (treffer > 30) treffer = 30;
-            if (treffer < -30) treffer = -30;
-
-            ballWinkel = 180.0 - ((treffer / 30.0) * 45.0);
-            ballX = schlaegerRechts.x - meinRadius;
-
-            ballSpeed += 0.2;
-            if (ballSpeed > 3.0) ballSpeed = 3.0;
-        }
-        // 6. Links verfehlt: Punkt für Spieler 2
-        else if (ballX - meinRadius <= 0)
-        {
-            aktuellePunkteSpieler2++;
-
-            ballX = 128;
-            ballY = 128;
-            ballWinkel = 0.0;
-            ballSpeed = 1.0;
-
-            StarteCountdown();
-        }
-        // Rechts verfehlt: Punkt für Spieler 1
-        else if (ballX + meinRadius >= 255)
-        {
-            aktuellePunkteSpieler1++;
-
-            ballX = 128;
-            ballY = 128;
-            ballWinkel = 180.0;
-            ballSpeed = 1.0;
-
-            StarteCountdown();
-        }
-
-        // 7. Obere und untere Bande
-        if (spielGestartet)
-        {
-            float richtungY = sin(ballWinkel * PI / 180.0);
-
-            if (ballY + meinRadius >= 255)
-            {
-                ballY = 255 - meinRadius;
-
-                if (richtungY > 0)
-                {
-                    ballWinkel = -ballWinkel;
-                }
-            }
-            else if (ballY - meinRadius <= 0)
-            {
-                ballY = meinRadius;
-
-                if (richtungY < 0)
-                {
-                    ballWinkel = -ballWinkel;
-                }
-            }
-        }
-    }
-
-    // 8. Gewinner feststellen
-    if (aktuellePunkteSpieler1 >= 10 ||
-        aktuellePunkteSpieler2 >= 10)
-    {
-        Gewonnen = true;
-        spielGestartet = false;
-        countdownAktiv = false;
-        gewinnerTextSichtbar = true;
-        letztesWiederhohlen = millis();
-    }
-
-    // 9. Spielfeld und Punktestand zeichnen
-    ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
-    ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
-
-    zeichneRechteck(0, 0, 255, 255);
-    zeichneSchlaeger(schlaegerLinks, 15, 60);
-    zeichneSchlaeger(schlaegerRechts, 15, 60);
-
-    if (Gewonnen)
-    {
-        int gewinner = (aktuellePunkteSpieler1 >= 10) ? 1 : 2;
-        ZeichneGewinner(40, 100, 175, 60, gewinner);
-    }
-    else
-    {
-        if (countdownAktiv)
-        {
-            if (countdownZahl == 1)
-            {
-                positioniereStrahl(138, 158);
-            }
-            else
-            {
-                positioniereStrahl(118, 198);
-            }
-
-            zeichneZiffer(118, 158, 40, countdownZahl);
-        }
-        else
-        {
-            ZeichneMittelstrich(128, 0, 255);
-        }
-
-        zeichneKreis(ballX, ballY, meinRadius);
-    }
-}
 
 void KIBewegungLeicht()
 {
@@ -329,7 +152,7 @@ void KIBewegungLeicht()
     {
         letzteKIBewegung = jetzt;
 
-        float schlaegerMitte = schlaegerRechts.y + 30;
+        float schlaegerMitte = schlaegerRechts.y + SCHLAEGER_HALB;
         float unterschied = ballY - schlaegerMitte;
 
         if (unterschied > 3)
@@ -394,13 +217,13 @@ void KIBewegungSchwer()
 
         // Mittelpunkt des Spielerschlägers liegt
         // oberhalb der Spielfeldmitte.
-        if (schlaegerLinks.y + 30 > 128)
+        if (schlaegerLinks.y + SCHLAEGER_HALB > FELD_MITTE)
         {
 
             kiZielVersatz = 15;
 
         }
-        else if(schlaegerLinks.y + 30 < 128)
+        else if(schlaegerLinks.y + SCHLAEGER_HALB < FELD_MITTE)
         {
                 kiZielVersatz = -25;
             
@@ -450,66 +273,45 @@ void KIBewegung(int KISchwierigkeit)
 
     }
 }
-
-
-void loopPongKI(int KISchwierigkeit)
+void gewinnerAnzeigen()
 {
-    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
+    unsigned long jetzt = millis();
+    int gewinner = (aktuellePunkteSpieler1 >= SIEG_PUNKTE) ? 1 : 2;
+    if (jetzt - letztesWiederhohlen >= 500)
     {
-        PongSound();
+        letztesWiederhohlen = jetzt;
+        gewinnerTextSichtbar = !gewinnerTextSichtbar;
     }
-    // 1. Gewinneranzeige
-    if (Gewonnen)
+    ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
+    ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
+    zeichneRechteck(0, 0, FELD_GROESSE, FELD_GROESSE);
+    zeichneSchlaeger(schlaegerLinks, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
+    zeichneSchlaeger(schlaegerRechts, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
+
+    if (gewinnerTextSichtbar)
     {
-        unsigned long jetzt = millis();
-        int gewinner = (aktuellePunkteSpieler1 >= 10) ? 1 : 2;
-
-        if (jetzt - letztesWiederhohlen >= 500)
-        {
-            letztesWiederhohlen = jetzt;
-            gewinnerTextSichtbar = !gewinnerTextSichtbar;
-        }
-
-        ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
-        ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
-        zeichneRechteck(0, 0, 255, 255);
-        zeichneSchlaeger(schlaegerLinks, 15, 60);
-        zeichneSchlaeger(schlaegerRechts, 15, 60);
-
-        if (gewinnerTextSichtbar)
-        {
-            ZeichneGewinner(40, 100, 175, 60, gewinner);
-        }
-
-        return;
+        ZeichneGewinner(40, 100, 175, 60, gewinner);
     }
+}
 
-    // 2. Spielereingabe, Countdown und KI aktualisieren
-    lesePotiKI();
-    countdownAktualisieren();
-
-    if (spielGestartet)
-    {
-        KIBewegung(KISchwierigkeit);
-    }
-
-    // 3. Schläger auf das Spielfeld begrenzen
+void schlaegerBegrenzen()
+{
     if (schlaegerLinks.y < 0)
         schlaegerLinks.y = 0;
 
-    if (schlaegerLinks.y + 60 > 255)
-        schlaegerLinks.y = 255 - 60;
+    if (schlaegerLinks.y + SCHLAEGER_HOEHE > FELD_GROESSE)
+        schlaegerLinks.y = FELD_GROESSE - SCHLAEGER_HOEHE;
 
     if (schlaegerRechts.y < 0)
         schlaegerRechts.y = 0;
 
-    if (schlaegerRechts.y + 60 > 255)
-        schlaegerRechts.y = 255 - 60;
+    if (schlaegerRechts.y + SCHLAEGER_HOEHE > FELD_GROESSE)
+        schlaegerRechts.y = FELD_GROESSE - SCHLAEGER_HOEHE;
+}
 
-    // Bewegung und Kollisionen nur im laufenden Spiel
-    if (spielGestartet)
-    {
-        // 4. Ball bewegen
+void ballBewegen()
+{
+    // 4. Ball bewegen
         float rad = ballWinkel * (PI / 180.0);
         float bewegungX = ballSpeed * cos(rad);
         float bewegungY = ballSpeed * sin(rad);
@@ -521,53 +323,53 @@ void loopPongKI(int KISchwierigkeit)
         if (bewegungX < 0 &&
             ballBeruehrtSchlaeger(schlaegerLinks))
         {
-            float treffer = ballY - (schlaegerLinks.y + 30);
+            float treffer = ballY - (schlaegerLinks.y + SCHLAEGER_HALB);
 
-            if (treffer > 30) treffer = 30;
-            if (treffer < -30) treffer = -30;
+            if (treffer > SCHLAEGER_HALB) treffer = SCHLAEGER_HALB;
+            if (treffer < -SCHLAEGER_HALB) treffer = -SCHLAEGER_HALB;
 
-            ballWinkel = (treffer / 30.0) * 45.0;
-            ballX = schlaegerLinks.x + 15 + meinRadius;
+            ballWinkel = (treffer / SCHLAEGER_HALB) * MAX_WINKEL;
+            ballX = schlaegerLinks.x + SCHLAEGER_BREITE + BALL_RADIUS;
 
-            ballSpeed += 0.2;
-            if (ballSpeed > 3.0) ballSpeed = 3.0;
+            ballSpeed += BALL_PLUS;
+            if (ballSpeed > BALL_MAX) ballSpeed = BALL_MAX;
         }
-        // Rechter Schläger: KI
+        // Rechter Schläger
         else if (bewegungX > 0 &&
                  ballBeruehrtSchlaeger(schlaegerRechts))
         {
-            float treffer = ballY - (schlaegerRechts.y + 30);
+            float treffer = ballY - (schlaegerRechts.y + SCHLAEGER_HALB);
 
-            if (treffer > 30) treffer = 30;
-            if (treffer < -30) treffer = -30;
+            if (treffer > SCHLAEGER_HALB) treffer = SCHLAEGER_HALB;
+            if (treffer < -SCHLAEGER_HALB) treffer = -SCHLAEGER_HALB;
 
-            ballWinkel = 180.0 - ((treffer / 30.0) * 45.0);
-            ballX = schlaegerRechts.x - meinRadius;
+            ballWinkel = 180.0 - ((treffer / SCHLAEGER_HALB) * MAX_WINKEL);
+            ballX = schlaegerRechts.x - BALL_RADIUS;
 
-            ballSpeed += 0.2;
-            if (ballSpeed > 3.0) ballSpeed = 3.0;
+            ballSpeed += BALL_PLUS;
+            if (ballSpeed > BALL_MAX) ballSpeed = BALL_MAX;
         }
-        // 6. Spieler verfehlt: Punkt für die KI
-        else if (ballX - meinRadius <= 0)
+        // 6. Links verfehlt: Punkt für Spieler 2
+        else if (ballX - BALL_RADIUS <= 0)
         {
             aktuellePunkteSpieler2++;
 
-            ballX = 128;
-            ballY = 128;
+            ballX = FELD_MITTE;
+            ballY = FELD_MITTE;
             ballWinkel = 0.0;
-            ballSpeed = 1.0;
+            ballSpeed = BALL_START;
 
             StarteCountdown();
         }
-        // KI verfehlt: Punkt für Spieler 1
-        else if (ballX + meinRadius >= 255)
+        // Rechts verfehlt: Punkt für Spieler 1
+        else if (ballX + BALL_RADIUS >= FELD_GROESSE)
         {
             aktuellePunkteSpieler1++;
 
-            ballX = 128;
-            ballY = 128;
+            ballX = FELD_MITTE;
+            ballY = FELD_MITTE;
             ballWinkel = 180.0;
-            ballSpeed = 1.0;
+            ballSpeed = BALL_START;
 
             StarteCountdown();
         }
@@ -577,18 +379,18 @@ void loopPongKI(int KISchwierigkeit)
         {
             float richtungY = sin(ballWinkel * PI / 180.0);
 
-            if (ballY + meinRadius >= 255)
+            if (ballY + BALL_RADIUS >= FELD_GROESSE)
             {
-                ballY = 255 - meinRadius;
+                ballY = FELD_GROESSE - BALL_RADIUS;
 
                 if (richtungY > 0)
                 {
                     ballWinkel = -ballWinkel;
                 }
             }
-            else if (ballY - meinRadius <= 0)
+            else if (ballY - BALL_RADIUS <= 0)
             {
-                ballY = meinRadius;
+                ballY = BALL_RADIUS;
 
                 if (richtungY < 0)
                 {
@@ -596,11 +398,12 @@ void loopPongKI(int KISchwierigkeit)
                 }
             }
         }
-    }
+}
 
-    // 8. Gewinner feststellen
-    if (aktuellePunkteSpieler1 >= 10 ||
-        aktuellePunkteSpieler2 >= 10)
+void gewinnerPruefen()
+{
+    if (aktuellePunkteSpieler1 >= SIEG_PUNKTE ||
+        aktuellePunkteSpieler2 >= SIEG_PUNKTE)
     {
         Gewonnen = true;
         spielGestartet = false;
@@ -608,40 +411,84 @@ void loopPongKI(int KISchwierigkeit)
         gewinnerTextSichtbar = true;
         letztesWiederhohlen = millis();
     }
+}
 
-    // 9. Spielfeld und Punktestand zeichnen
+void pongZeichnen()
+{
     ZerlegeZiffer(20, 230, 12, aktuellePunkteSpieler1);
     ZerlegeZiffer(230, 230, 12, aktuellePunkteSpieler2);
 
-    zeichneRechteck(0, 0, 255, 255);
-    zeichneSchlaeger(schlaegerLinks, 15, 60);
-    zeichneSchlaeger(schlaegerRechts, 15, 60);
+    zeichneRechteck(0, 0, FELD_GROESSE, FELD_GROESSE);
+    zeichneSchlaeger(schlaegerLinks, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
+    zeichneSchlaeger(schlaegerRechts, SCHLAEGER_BREITE, SCHLAEGER_HOEHE);
 
-    if (Gewonnen)
+    if (countdownAktiv)
     {
-        int gewinner = (aktuellePunkteSpieler1 >= 10) ? 1 : 2;
-        ZeichneGewinner(40, 100, 175, 60, gewinner);
-    }
-    else
-    {
-        if (countdownAktiv)
+        if (countdownZahl == 1)
         {
-            if (countdownZahl == 1)
-            {
-                positioniereStrahl(138, 158);
-            }
-            else
-            {
-                positioniereStrahl(118, 198);
-            }
-
-            zeichneZiffer(118, 158, 40, countdownZahl);
+            positioniereStrahl(138, 158);
         }
         else
         {
-            ZeichneMittelstrich(128, 0, 255);
+            positioniereStrahl(118, 198);
         }
-
-        zeichneKreis(ballX, ballY, meinRadius);
+        zeichneZiffer(118, 158, 40, countdownZahl);
     }
+    else
+    {
+        ZeichneMittelstrich(FELD_MITTE, 0, FELD_GROESSE);
+    }
+
+    zeichneKreis(ballX, ballY, BALL_RADIUS);
+}
+
+// Ein Durchlauf von Pong, für beide Modi
+void pongSpielen(bool gegenKI, int schwierigkeit)
+{
+    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
+    {
+        PongSound();
+    }
+
+    // 1. Gewinneranzeige
+    if (Gewonnen)
+    {
+        gewinnerAnzeigen();
+        return;
+    }
+
+    // 2. Eingaben, Countdown, KI
+    if (gegenKI)
+    {
+        lesePotiKI();
+    }
+    else
+    {
+        lesePoti();
+    }
+    countdownAktualisieren();
+
+    if (gegenKI && spielGestartet)
+    {
+        KIBewegung(schwierigkeit);
+    }
+
+    // 3. bis 9.
+    schlaegerBegrenzen();
+    if (spielGestartet)
+    {
+        ballBewegen();
+    }
+    gewinnerPruefen();
+    pongZeichnen();
+}
+
+void loopPong()
+{
+    pongSpielen(false, 0);
+}
+
+void loopPongKI(int KISchwierigkeit)
+{
+    pongSpielen(true, KISchwierigkeit);
 }
