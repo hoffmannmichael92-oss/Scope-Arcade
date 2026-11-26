@@ -11,10 +11,11 @@ const int SCHLAEGER_BREITE = 15;
 const int SCHLAEGER_HOEHE = 60;
 const int SCHLAEGER_HALB = SCHLAEGER_HOEHE / 2;
 
-const int BALL_RADIUS = 15;
-const float BALL_START = 1.0f;
-const float BALL_PLUS = 0.2f;
-const float BALL_MAX = 3.0f;
+const int BALL_RADIUS = 7;
+const int BALL_TAKT_MS = 10;
+const float BALL_START = 1.5f;
+const float BALL_PLUS = 0.15f;
+const float BALL_MAX = 3.8f;
 const float MAX_WINKEL = 45.0f;
 
 const int SIEG_PUNKTE = 10;
@@ -32,15 +33,12 @@ int aktuellePunkteSpieler2 = 0;
 bool Gewonnen = false;
 int PotiLinks = 0;
 int PotiRechts = 0;
-int KISchwierigkeit = 1; 
 bool spielGestartet = false;
 bool gewinnerTextSichtbar = true;
 bool countdownAktiv = false;
 int countdownZahl = 3;
 unsigned long letzterCountdownWechsel = 0;
 unsigned long letztesWiederhohlen = 0;
-bool Pongsound = false;
-
 bool kiZielGewaehlt = false;
 int kiZielVersatz = 0;
 
@@ -70,8 +68,8 @@ void countdownAktualisieren()
     }
 }
 
-void lesePoti() {
-    // 1. Analogwerte einlesen
+void lesePoti() 
+{
     PotiLinks = analogRead(36); 
 
     PotiRechts = analogRead(39); 
@@ -79,13 +77,12 @@ void lesePoti() {
     schlaegerLinks.y = map(PotiLinks, 0, 4095, 0, FELD_GROESSE - SCHLAEGER_HOEHE);
     schlaegerRechts.y = map(PotiRechts, 0, 4095, 0, FELD_GROESSE - SCHLAEGER_HOEHE);
 }
-void lesePotiKI() {
-    // 1. Analogwerte einlesen
+void lesePotiKI() 
+{
     PotiLinks = analogRead(36); 
  
     schlaegerLinks.y = map(PotiLinks, 0, 4095, 0, FELD_GROESSE - SCHLAEGER_HOEHE);
 }
-
 
 
 bool ballBeruehrtSchlaeger(Punkt schlaeger)
@@ -141,16 +138,47 @@ void resetPong() {
 
 void KIBewegungLeicht()
 {
-    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
-    {
-        PongSound();
-    }
     static unsigned long letzteKIBewegung = 0;
     unsigned long jetzt = millis();
 
-    if (jetzt - letzteKIBewegung >= 20)
+    if (jetzt - letzteKIBewegung >= 8)
     {
         letzteKIBewegung = jetzt;
+
+        // Reagiert erst, wenn der Ball in ihrer Hälfte ist
+        if (ballX < FELD_MITTE)
+        {
+            return;
+        }
+
+        float schlaegerMitte = schlaegerRechts.y + SCHLAEGER_HALB;
+        float unterschied = ballY - schlaegerMitte;
+
+        if (unterschied > 3)
+        {
+            schlaegerRechts.y += 1;
+        }
+        else if (unterschied < -3)
+        {
+            schlaegerRechts.y -= 1;
+        }
+    }
+}
+
+void KIBewegungMittel()
+{
+    static unsigned long letzteKIBewegung = 0;
+    unsigned long jetzt = millis();
+
+    if (jetzt - letzteKIBewegung >= 11)
+    {
+        letzteKIBewegung = jetzt;
+
+        // Reagiert ab dem ersten Viertel des Spielfelds
+        if (ballX < FELD_GROESSE / 4)
+        {
+            return;
+        }
 
         float schlaegerMitte = schlaegerRechts.y + SCHLAEGER_HALB;
         float unterschied = ballY - schlaegerMitte;
@@ -165,38 +193,9 @@ void KIBewegungLeicht()
         }
     }
 }
-void KIBewegungMittel()
-{
-    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
-    {
-        PongSound();
-    }
-    static unsigned long letzteKIBewegung = 0;
-    unsigned long jetzt = millis();
 
-    if (jetzt - letzteKIBewegung >= 15)
-    {
-        letzteKIBewegung = jetzt;
-
-        float schlaegerMitte = schlaegerRechts.y + 30;
-        float unterschied = ballY - schlaegerMitte;
-
-        if (unterschied > 3)
-        {
-            schlaegerRechts.y += 3;
-        }
-        else if (unterschied < -3)
-        {
-            schlaegerRechts.y -= 3;
-        }
-    }
-}
 void KIBewegungSchwer()
 {
-    if(ballBeruehrtSchlaeger(schlaegerLinks) || ballBeruehrtSchlaeger(schlaegerRechts))
-    {
-        PongSound();
-    }
     static unsigned long letzteKIBewegung = 0;
     unsigned long jetzt = millis();
 
@@ -215,24 +214,20 @@ void KIBewegungSchwer()
     {
         kiZielVersatz = 0;
 
-        // Mittelpunkt des Spielerschlägers liegt
-        // oberhalb der Spielfeldmitte.
+        // Spieler steht oben → Ball nach unten spielen und umgekehrt
         if (schlaegerLinks.y + SCHLAEGER_HALB > FELD_MITTE)
         {
-
             kiZielVersatz = 15;
-
         }
-        else if(schlaegerLinks.y + SCHLAEGER_HALB < FELD_MITTE)
+        else if (schlaegerLinks.y + SCHLAEGER_HALB < FELD_MITTE)
         {
-                kiZielVersatz = -25;
-            
+            kiZielVersatz = -25;
         }
 
         kiZielGewaehlt = true;
     }
 
-    if (jetzt - letzteKIBewegung >= 10)
+    if (jetzt - letzteKIBewegung >= 8)
     {
         letzteKIBewegung = jetzt;
 
@@ -240,20 +235,20 @@ void KIBewegungSchwer()
         // bei positivem Versatz oberhalb des Balls
         float zielMitte = ballY + kiZielVersatz;
 
-        // Schlägermitte kann nur zwischen 30 und 225 liegen
-        if (zielMitte < 30) zielMitte = 30;
-        if (zielMitte > 225) zielMitte = 225;
+        // Schlägermitte kann nur innerhalb des Spielfelds liegen
+        if (zielMitte < SCHLAEGER_HALB) zielMitte = SCHLAEGER_HALB;
+        if (zielMitte > FELD_GROESSE - SCHLAEGER_HALB) zielMitte = FELD_GROESSE - SCHLAEGER_HALB;
 
-        float schlaegerMitte = schlaegerRechts.y + 30;
+        float schlaegerMitte = schlaegerRechts.y + SCHLAEGER_HALB;
         float unterschied = zielMitte - schlaegerMitte;
 
         if (unterschied > 3)
         {
-            schlaegerRechts.y += 3;
+            schlaegerRechts.y += 2;
         }
         else if (unterschied < -3)
         {
-            schlaegerRechts.y -= 3;
+            schlaegerRechts.y -= 2;
         }
     }
 }
@@ -311,7 +306,6 @@ void schlaegerBegrenzen()
 
 void ballBewegen()
 {
-    // 4. Ball bewegen
         float rad = ballWinkel * (PI / 180.0);
         float bewegungX = ballSpeed * cos(rad);
         float bewegungY = ballSpeed * sin(rad);
@@ -319,7 +313,6 @@ void ballBewegen()
         ballX += bewegungX;
         ballY += bewegungY;
 
-        // 5. Linker Schläger
         if (bewegungX < 0 &&
             ballBeruehrtSchlaeger(schlaegerLinks))
         {
@@ -334,7 +327,6 @@ void ballBewegen()
             ballSpeed += BALL_PLUS;
             if (ballSpeed > BALL_MAX) ballSpeed = BALL_MAX;
         }
-        // Rechter Schläger
         else if (bewegungX > 0 &&
                  ballBeruehrtSchlaeger(schlaegerRechts))
         {
@@ -349,7 +341,6 @@ void ballBewegen()
             ballSpeed += BALL_PLUS;
             if (ballSpeed > BALL_MAX) ballSpeed = BALL_MAX;
         }
-        // 6. Links verfehlt: Punkt für Spieler 2
         else if (ballX - BALL_RADIUS <= 0)
         {
             aktuellePunkteSpieler2++;
@@ -361,7 +352,6 @@ void ballBewegen()
 
             StarteCountdown();
         }
-        // Rechts verfehlt: Punkt für Spieler 1
         else if (ballX + BALL_RADIUS >= FELD_GROESSE)
         {
             aktuellePunkteSpieler1++;
@@ -373,8 +363,6 @@ void ballBewegen()
 
             StarteCountdown();
         }
-
-        // 7. Obere und untere Bande
         if (spielGestartet)
         {
             float richtungY = sin(ballWinkel * PI / 180.0);
@@ -449,15 +437,11 @@ void pongSpielen(bool gegenKI, int schwierigkeit)
     {
         PongSound();
     }
-
-    // 1. Gewinneranzeige
     if (Gewonnen)
     {
         gewinnerAnzeigen();
         return;
     }
-
-    // 2. Eingaben, Countdown, KI
     if (gegenKI)
     {
         lesePotiKI();
@@ -472,11 +456,12 @@ void pongSpielen(bool gegenKI, int schwierigkeit)
     {
         KIBewegung(schwierigkeit);
     }
-
-    // 3. bis 9.
     schlaegerBegrenzen();
-    if (spielGestartet)
+    unsigned long jetzt = millis();
+    static unsigned long letzteBewegung = 0;
+    if (spielGestartet && jetzt - letzteBewegung >= BALL_TAKT_MS)
     {
+        letzteBewegung = jetzt;
         ballBewegen();
     }
     gewinnerPruefen();
