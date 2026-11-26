@@ -46,11 +46,15 @@ struct JoystickWerte
 unsigned long jetzt = 0;
 bool auswahlbereit = true;
 JoystickWerte Werte {0, 0};
-const int MAX_ASTEROIDEN = 20;
+const int MAX_ASTEROIDEN = 40;
 const int MAX_SCHUESSE = 10;
 const int MAX_LEBEN = 3;
 const int FELD_OBEN = 230; 
-
+// Steuerung
+const int   JOY_MITTE      = 1850;   // Ruhewert des Joysticks
+const int   DREH_TOTZONE   = 400;    // so weit muss man links/rechts drücken, bis es dreht
+const int   SCHUB_SCHWELLE = 800;    // so weit muss man nach oben drücken für Schub
+const float DREH_SCHRITT   = 0.084f; // Drehung pro 20 ms (≈ 1,5 s für eine volle Umdrehung)
 const int GROSS = 18;
 const int MITTEL = 12;
 const int KLEIN = 7;
@@ -59,6 +63,11 @@ const int PunkteMITTEL = 50;
 const int PunkteKLEIN = 100;
 int Tasterpin = 2;
 static bool verloren = false; 
+
+int aktuelleWelle = 0;            
+int nochZuSpawnen = 0;            
+unsigned long letzterSpawn = 0;  
+unsigned long wellenStart = 0;   
 Asteroid Asteroid1[MAX_ASTEROIDEN] = {};
 Raumschiff Raumschiff1
 {
@@ -81,6 +90,8 @@ void ResetAsteroids()
     Raumschiff1.leben = MAX_LEBEN;
     Raumschiff1.Punkte = 0;
     verloren = false;
+    aktuelleWelle = 0;
+    nochZuSpawnen = 0;
     for (int i = 0; i < MAX_ASTEROIDEN; i++)
     {
         Asteroid1[i].AsteroidAktiv = false;
@@ -298,23 +309,42 @@ void SchiffZeichnen()
     zeichneLinie(kerbeLinksX, kerbeLinksY, linksUntenX, linksUntenY);
     zeichneLinie(linksUntenX, linksUntenY, spitzeX, spitzeY);
 }
+// positiv = Joystick nach LINKS, negativ = nach RECHTS
+int joystickLinksRechts()
+{
+    return JOY_MITTE - Werte.y;
+}
 
+// positiv = Joystick nach OBEN
+int joystickOben()
+{
+    return JOY_MITTE - Werte.x;
+}
+int joystickUnten()
+{
+    return Werte.x - JOY_MITTE;
+}
 void RaumschiffDrehen()
 {
-    int richtungX = Werte.x - 1850;
-    int richtungY = 1850 - Werte.y;
-
-    if (abs(richtungX) > 200 || abs(richtungY) > 200)
+    // Drehen im festen Takt, damit es immer gleich schnell ist
+    unsigned long jetzt = millis();
+    static unsigned long letzteDrehung = 0;
+    if (jetzt - letzteDrehung >= 20)
     {
-        Raumschiff1.Winkel =
-            atan2f(richtungX, richtungY) + PI / 2.0f;
+        letzteDrehung = jetzt;
+
+        int lr = joystickLinksRechts();
+        if (lr > DREH_TOTZONE)
+        {
+            Raumschiff1.Winkel += DREH_SCHRITT;   // nach links drehen
+        }
+        else if (lr < -DREH_TOTZONE)
+        {
+            Raumschiff1.Winkel -= DREH_SCHRITT;   // nach rechts drehen
+        }
     }
+
     SchiffZeichnen();
-    //BasisDrehen();
-    //DachDrehen();
-    //FluegelDrehen();
-    //FensterDrehen();
-    //AntriebDrehen();
 }
 void SchubDrehen()
 {
@@ -410,11 +440,11 @@ void GameOver()
 }
 void RaumschiffBewegen()
 {
-    int JoystickrichtungX = Werte.x - 1850;
-    int JoystickrichtungY = 1850 - Werte.y;
     float richtungX = -sin(Raumschiff1.Winkel);
     float richtungY = cos(Raumschiff1.Winkel);
-    bool schub = (abs(JoystickrichtungX) > 1800 || abs(JoystickrichtungY) > 1800);
+
+    bool schub = (joystickOben() > SCHUB_SCHWELLE);
+    bool bremse = (joystickUnten() > SCHUB_SCHWELLE);
     if(schub)
     {
         SchubDrehen();
@@ -438,6 +468,11 @@ void RaumschiffBewegen()
                 Raumschiff1.GeschwindigkeitY = (Raumschiff1.GeschwindigkeitY / speed) * maxGeschwindigkeit;
             }
         } 
+        else if (bremse)
+        {
+            Raumschiff1.GeschwindigkeitX *= 0.95f;
+            Raumschiff1.GeschwindigkeitY *= 0.95f;
+        }
         
         else 
         {
@@ -519,23 +554,15 @@ void AsteroidsSpawnen(Asteroid &Asteroid1)
     float richtungX = Raumschiff1.x - Asteroid1.x;
     float richtungY = Raumschiff1.y - Asteroid1.y;
     float laenge = sqrt(richtungX * richtungX + richtungY * richtungY);
-    float Geschwindigkeit = random(30, 91) / 100.0f;
+    float faktor = 1.0f + 0.15f * (aktuelleWelle - 1);   // Welle 1: 1.0, Welle 2: 1.15, Welle 3: 1.3 ...
+    if (faktor > 2.5f)
+    {
+        faktor = 2.5f;                                  // nicht unendlich schnell
+    }
+    float Geschwindigkeit = random(30, 70) / 100.0f * faktor;
     Asteroid1.geschwindigkeitX = (richtungX / laenge) * Geschwindigkeit;
     Asteroid1.geschwindigkeitY = (richtungY / laenge) * Geschwindigkeit;
 }  
- 
-void AsteroidsAktualisieren()
-{
-
-    for(int i = 0; i < 4; i++)
-    {
-        if(!Asteroid1[i].AsteroidAktiv)
-        {
-            AsteroidsSpawnen(Asteroid1[i]);
-            break;
-        }
-    }
-}
 
 void RaumschiffKollisionErkannt()
 {
@@ -613,6 +640,16 @@ void zeichneAsteroids()
     zeichneLinie(0, FELD_OBEN, 255, FELD_OBEN);
     zeichneLeben(0.6, Raumschiff1.leben);
     arcadeZahl(10, 235, Raumschiff1.Punkte, 3);
+    arcadeText(80, 235, "WELLE", 3);
+    arcadeZahl(160, 235, aktuelleWelle, 3);
+    if (millis() - wellenStart < 2000)
+    {
+        arcadeText(70, 190, "WELLE", 6);
+        int skala = 6;
+        int breite = StellenZaehlen(aktuelleWelle) * 4 * skala - skala - 1;
+        int x = (256 - breite) / 2;
+        arcadeZahl(x, 150, aktuelleWelle, skala);
+    }
 }
 
 void SchussSpawnen()
@@ -692,6 +729,47 @@ void SchussAusloesen()
     }
 }
 
+bool alleAsteroidenWeg()
+{
+    for (int i = 0; i < MAX_ASTEROIDEN; i++)
+    {
+        if (Asteroid1[i].AsteroidAktiv)
+        {
+            return false;   // einen aktiven gefunden → NICHT alle weg
+        }
+    }
+    return true;            // keinen gefunden → alle weg
+}
+void AsteroidsAktualisieren()
+{
+    unsigned long jetzt = millis();
+
+    // Teil 1: Neue Welle starten?
+    if (alleAsteroidenWeg() && nochZuSpawnen == 0)
+    {
+        aktuelleWelle++;
+        nochZuSpawnen = 2 + aktuelleWelle;   
+        if (nochZuSpawnen > 7)
+        {
+            nochZuSpawnen = 7;               
+        }
+        letzterSpawn = jetzt;
+        wellenStart = jetzt;
+    }
+    if (nochZuSpawnen > 0 && jetzt - letzterSpawn >= 2000)
+    {
+        for (int i = 0; i < MAX_ASTEROIDEN; i++)
+        {
+            if (!Asteroid1[i].AsteroidAktiv)   
+            {
+                AsteroidsSpawnen(Asteroid1[i]);
+                nochZuSpawnen--;
+                letzterSpawn = jetzt;
+                break;                         
+            }
+        }
+    }
+}
 bool SchussKollisionPruefen(const Asteroid &Asteroid1,
                            const Schuesse &schuss)
 {
